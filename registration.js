@@ -1611,10 +1611,21 @@ document.getElementById('register-form').addEventListener('submit', async functi
         const defaultBlock = 'Introductory';
         const intakeData = getIntakeData();
         
+        // The registration URL carries an institution-specific code. The database trigger
+        // resolves this code against institution_registration_links and assigns the tenant.
+        const registrationParams = new URLSearchParams(window.location.search);
+        const institutionCode = String(
+            registrationParams.get('institution_code') || registrationParams.get('institution') || 'nchsm'
+        ).trim().toLowerCase();
+        if (!institutionCode || !/^[a-z0-9_-]{2,80}$/.test(institutionCode)) {
+            throw new Error('This institution registration link is invalid. Please use the link provided by your institution.');
+        }
+
         let userMetadata = {
             full_name, role, phone, alt_phone, national_id,
             date_of_birth: dob, gender, address, status: 'pending',
-            student_type: selectedStudentType
+            student_type: selectedStudentType,
+            institution_code: institutionCode
         };
         
         if (role === 'student') {
