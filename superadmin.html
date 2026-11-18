@@ -1692,6 +1692,27 @@ main.main>header{width:100%;max-width:100%;min-width:0}
 <!-- ============================================================ -->
 <!-- 🚀 ULTRA MODERN DASHBOARD - COMPLETE WITH ALL FEATURES        -->
 <!-- ============================================================ -->
+    <!-- CAMPUS NEXUS: GLOBAL INSTITUTION FILTER -->
+    <section id="cnPlatformOverview" aria-label="Global institution filter">
+      <div class="cn-global-filter">
+        <div class="cn-global-filter-copy">
+          <span class="cn-global-eyebrow"><i class="fas fa-globe"></i> CAMPUS NEXUS · GLOBAL OPERATIONS</span>
+          <strong id="cnDashboardScopeTitle">All institutions</strong>
+          <small id="cnDashboardScopeDescription">Consolidated view across every institution on the platform.</small>
+        </div>
+        <label class="cn-global-select-wrap" for="cnInstitutionFilter">
+          <span><i class="fas fa-filter"></i> Institution</span>
+          <select id="cnGlobalInstitutionFilter" aria-label="Filter dashboard by institution">
+            <option value="all">All institutions</option>
+          </select>
+        </label>
+        <span id="cnPlatformMetricsUpdated" class="cn-global-updated" aria-live="polite">Loading institution data…</span>
+        <button type="button" id="cnPlatformRefresh" class="cn-global-refresh"><i class="fas fa-sync-alt"></i> Refresh</button>
+        <button type="button" class="cn-global-manage" onclick="showTab('institutions')"><i class="fas fa-building"></i> Manage institutions</button>
+      </div>
+    </section>
+
+
 <section id="dashboard" class="tab-content active" style="padding: 0 4px;">
     
     <!-- ====== TOP BANNER WITH ALL CONTROLS ====== -->
@@ -1959,26 +1980,6 @@ main.main>header{width:100%;max-width:100%;min-width:0}
             </button>
         </div>
     </div>
-
-    <!-- CAMPUS NEXUS: GLOBAL INSTITUTION FILTER -->
-    <section id="cnPlatformOverview" aria-label="Global institution filter">
-      <div class="cn-global-filter">
-        <div class="cn-global-filter-copy">
-          <span class="cn-global-eyebrow"><i class="fas fa-globe"></i> CAMPUS NEXUS · GLOBAL OPERATIONS</span>
-          <strong id="cnDashboardScopeTitle">All institutions</strong>
-          <small id="cnDashboardScopeDescription">Consolidated view across every institution on the platform.</small>
-        </div>
-        <label class="cn-global-select-wrap" for="cnInstitutionFilter">
-          <span><i class="fas fa-filter"></i> Institution</span>
-          <select id="cnGlobalInstitutionFilter" aria-label="Filter dashboard by institution">
-            <option value="all">All institutions</option>
-          </select>
-        </label>
-        <span id="cnPlatformMetricsUpdated" class="cn-global-updated" aria-live="polite">Loading institution data…</span>
-        <button type="button" id="cnPlatformRefresh" class="cn-global-refresh"><i class="fas fa-sync-alt"></i> Refresh</button>
-        <button type="button" class="cn-global-manage" onclick="showTab('institutions')"><i class="fas fa-building"></i> Manage institutions</button>
-      </div>
-    </section>
 
     <!-- ====== PRIMARY METRICS ROW 1 - GLASS CARDS ====== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 18px;">
