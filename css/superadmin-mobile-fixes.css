@@ -117,3 +117,69 @@
   #cnPlatformOverview .cn-platform-grid { grid-template-columns: 1fr !important; }
   #cnPlatformOverview .cn-platform-head button { flex-basis: 100%; }
 }
+
+
+/* Physical-device fallback: some Android browsers force a wide desktop
+   layout viewport even when the page has a correct viewport meta tag. */
+@media only screen and (max-device-width: 768px),
+       only screen and (pointer: coarse) and (max-width: 1024px) {
+  html, body, .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+  }
+  #sidebar {
+    left: -280px !important;
+    right: auto !important;
+    width: min(280px, 86vw) !important;
+    max-width: 86vw !important;
+    z-index: 1200 !important;
+  }
+  #sidebar.active { left: 0 !important; }
+  .main, main.main {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 76px 12px calc(105px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .mobile-nav-toggle {
+    display: flex !important;
+    position: fixed !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 1300 !important;
+  }
+  body.sidebar-open:before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(2,15,27,.52);
+    z-index: 1100;
+  }
+  body.sidebar-open:after { display: none !important; }
+  #cnPlatformOverview .cn-platform-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  main.main div[style*="grid-template-columns"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .table-responsive, .table-container, .table-wrapper,
+  .table-scroll, .data-table-wrapper, .dataTables_scroll,
+  .dataTables_scrollBody {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y !important;
+  }
+}
+@media only screen and (max-device-width: 390px) {
+  main.main div[style*="grid-template-columns"],
+  #cnPlatformOverview .cn-platform-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
