@@ -107,18 +107,27 @@
     }
     host.innerHTML = filtered.map(i => {
       const status = i.status === "active" ? "Active" : i.status === "suspended" ? "Suspended" : "Pending";
+      const registrationUrl = i._registrationUrl || "";
       return '<tr><td><div class="cn-school"><span class="cn-school-mark" style="background:' + esc(i.primary_color || "#082f49") + '">' +
         (i.logo_url ? '<img src="' + esc(i.logo_url) + '" alt="" onerror="this.style.display=\'none\'">' : '<i class="fas fa-school"></i>') +
         '</span><span><strong>' + esc(i.name) + '</strong><small>' + esc(i.short_code) + ' · ' + esc(i.country || "") + '</small></span></div></td>' +
         '<td><span class="cn-status cn-status-' + esc(i.status) + '">' + status + '</span></td>' +
         '<td>' + esc(i._subscription?.plan_name || "—") + '<small class="cn-subline">' +
         (i._subscription ? esc(i._subscription.currency) + " " + Number(i._subscription.amount).toLocaleString() + " / " + esc(i._subscription.billing_cycle) : "Not configured") + '</small></td>' +
-        '<td>' + esc(i.contact_email || "—") + '</td><td>' + esc(i.portal_domain || "Not configured") + '</td>' +
+        '<td>' + esc(i.contact_email || "—") + '</td><td>' + (registrationUrl
+          ? '<a href="' + esc(registrationUrl) + '" target="_blank" rel="noopener">Registration link</a><button class="cn-row-action" type="button" data-copy-registration="' + esc(i.id) + '">Copy</button>'
+          : esc(i.portal_domain || "Domain not configured")) + '</td>' +
         '<td><div class="cn-row-actions"><button class="cn-row-action" type="button" data-edit="' + esc(i.id) + '">Manage</button>' +
         (i.status === "suspended" ? '<button class="cn-row-action" type="button" data-status="' + esc(i.id) + '" data-next="active">Activate</button>' :
         '<button class="cn-row-action cn-row-secondary" type="button" data-status="' + esc(i.id) + '" data-next="suspended">Suspend</button>') +
         '</div></td></tr>';
     }).join("");
+    host.querySelectorAll("[data-copy-registration]").forEach(button => button.addEventListener("click", async () => {
+      const item = institutions.find(i => i.id === button.dataset.copyRegistration);
+      if (!item?._registrationUrl) return;
+      try { await navigator.clipboard.writeText(item._registrationUrl); notify("Registration link copied.","success"); }
+      catch (_) { notify(item._registrationUrl,"info"); }
+    }));
     host.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => {
       const item = institutions.find(i => i.id === button.dataset.edit);
       if (item) fillForm(item);
@@ -147,23 +156,31 @@
     const { data, error } = await sb.from("institutions").select("*").order("created_at", {ascending:false});
     if (error) throw error;
     const ids = (data || []).map(i => i.id);
-    let modules = [], subscriptions = [], memberships = [];
+    let modules = [], subscriptions = [], memberships = [], registrationLinks = [];
     if (ids.length) {
-      const [m,s,u] = await Promise.all([
+      const [m,s,u,l] = await Promise.all([
         sb.from("institution_modules").select("institution_id,module_key,enabled").in("institution_id",ids),
         sb.from("institution_subscriptions").select("id,institution_id,plan_name,amount,currency,billing_cycle,status,starts_at,ends_at").in("institution_id",ids).order("created_at",{ascending:false}),
-        sb.from("institution_users").select("institution_id,user_id,role,status").in("institution_id",ids)
+        sb.from("institution_users").select("institution_id,user_id,role,status").in("institution_id",ids),
+        sb.from("institution_registration_links").select("id,institution_id,code,is_active,expires_at").in("institution_id",ids).eq("is_active",true).order("created_at",{ascending:false})
       ]);
       if (m.error) throw m.error;
       if (s.error) throw s.error;
       if (u.error) throw u.error;
-      modules = m.data || []; subscriptions = s.data || []; memberships = u.data || [];
+      if (l.error) throw l.error;
+      modules = m.data || []; subscriptions = s.data || []; memberships = u.data || []; registrationLinks = l.data || [];
     }
     institutions = (data || []).map(i => {
       const sub = subscriptions.find(x => x.institution_id === i.id);
       const member = memberships.find(x => x.institution_id === i.id && x.status === "active");
+      const registration = registrationLinks.find(x => x.institution_id === i.id);
+      const host = String(i.portal_domain || "").trim().replace(/^https?:\/\//i,"").replace(/\/$/,"");
+      const registrationUrl = host
+        ? "https://" + host + "/register"
+        : registration ? window.location.origin + "/registration.html?institution_code=" + encodeURIComponent(registration.code) : "";
       return {...i, _modules:modules.filter(x => x.institution_id === i.id && x.enabled).map(x => x.module_key),
-        _subscription:sub || null, _subscriptionId:sub?.id || null, _adminUserId:member?.user_id || null};
+        _subscription:sub || null, _subscriptionId:sub?.id || null, _adminUserId:member?.user_id || null,
+        _registrationUrl:registrationUrl, _registrationCode:registration?.code || null};
     });
     renderRows();
   }
@@ -213,6 +230,23 @@
         ({data:saved,error} = await sb.from("institutions").insert(payload).select("*").single());
       }
       if (error) throw error;
+
+      // Create an institution-specific, unguessable registration link.
+      const {data:existingLinks,error:linkReadError} = await sb.from("institution_registration_links")
+        .select("id,code").eq("institution_id",saved.id).eq("is_active",true).order("created_at",{ascending:false}).limit(1);
+      if (linkReadError) throw linkReadError;
+      let registrationCode = existingLinks?.[0]?.code || "";
+      if (!registrationCode) {
+        const bytes = new Uint8Array(24);
+        crypto.getRandomValues(bytes);
+        registrationCode = Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+        const {error:linkCreateError} = await sb.from("institution_registration_links").insert({
+          institution_id:saved.id,code:registrationCode,label:saved.name + " public registration",
+          is_active:true,created_by:currentUser.id
+        });
+        if (linkCreateError) throw linkCreateError;
+      }
+
       const moduleRows = MODULES.map(([module_key]) => ({institution_id:saved.id,module_key,enabled:enabledModules.includes(module_key),updated_at:new Date().toISOString()}));
       const {error:moduleError} = await sb.from("institution_modules").upsert(moduleRows,{onConflict:"institution_id,module_key"});
       if (moduleError) throw moduleError;
