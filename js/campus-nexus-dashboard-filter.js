@@ -109,12 +109,12 @@
       }
     });
     const labels = {
-      totalUsers:"All system users", totalStudents:"Active students",
-      pendingApprovals:"Waiting for approval", dashboardOpenTickets:"Open awaiting response",
-      totalDailyCheckIns:"Check-ins today", overallCheckInCount:"All-time records",
-      dashboardUrgentTickets:"High priority", activeSessions:"Currently online",
-      totalCourses:"Across all programs", totalResources:"Total available",
-      dashboardTotalPrograms:"Available programs"
+      totalUsers:"Legacy NCHSM data · not tenant-linked", totalStudents:"Legacy NCHSM data · not tenant-linked",
+      pendingApprovals:"Legacy NCHSM data · not tenant-linked", dashboardOpenTickets:"Legacy NCHSM data · not tenant-linked",
+      totalDailyCheckIns:"Legacy NCHSM data · not tenant-linked", overallCheckInCount:"Legacy NCHSM data · not tenant-linked",
+      dashboardUrgentTickets:"Legacy NCHSM data · not tenant-linked", activeSessions:"Legacy NCHSM data · not tenant-linked",
+      totalCourses:"Legacy NCHSM data · not tenant-linked", totalResources:"Legacy NCHSM data · not tenant-linked",
+      dashboardTotalPrograms:"Legacy NCHSM data · not tenant-linked"
     };
     Object.entries(labels).forEach(([id,label]) => {
       const el=$(id); const sub=el?.closest(".dashboard-card")?.querySelector(".minor-data");
@@ -247,6 +247,10 @@
       else results[key]=result;
     }
 
+    const scopeDescription=$("cnDashboardScopeDescription");
+    if(scopeDescription) scopeDescription.textContent = members.length
+      ? "Showing institution-linked records only · "+members.length+" user memberships"
+      : "No users are assigned to this institution yet. Legacy academic records are not included until membership and tenant mapping are completed.";
     const activeMembers=members.filter(x=>x.status==="active");
     const students=members.filter(x=>String(x.role||"").toLowerCase()==="student");
     const pending=members.filter(x=>x.status==="pending");
