@@ -3543,3 +3543,12 @@ console.log('   - 🔒 NO AUTO-PUBLISH - All actions require confirmation');
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(inject,250),{once:true});
   else setTimeout(inject,250);
 })();
+
+/* Mobile table scrolling: loaded from the core published-marks module on /superadmin. */
+(function(){
+  const src='js/superadmin-mobile-tables.js?v=20261118a';
+  if(document.querySelector('script[data-nchsm-mobile-tables]'))return;
+  const s=document.createElement('script');s.src=src;s.dataset.nchsmMobileTables='true';
+  s.onerror=()=>console.error('[NCHSM] Mobile table scrolling helper failed to load.');
+  document.head.appendChild(s);
+})();
