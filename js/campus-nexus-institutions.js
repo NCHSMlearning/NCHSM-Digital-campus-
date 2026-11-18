@@ -71,14 +71,14 @@
       cnInstitutionType:item.institution_type, cnInstitutionCountry:item.country,
       cnInstitutionEmail:item.contact_email, cnInstitutionPhone:item.contact_phone,
       cnInstitutionWebsite:item.website_url, cnInstitutionLogo:item.logo_url,
-      cnInstitutionDomain:item.portal_domain, cnInstitutionColor:item.primary_color,
+      cnInstitutionDomain:item.portal_domain, cnInstitutionAdmin:item.admin_email, cnInstitutionColor:item.primary_color,
       cnInstitutionAccent:item.secondary_color, cnInstitutionStatus:item.status
     };
     Object.entries(fields).forEach(([id,value]) => { if ($(id)) $(id).value = value || ""; });
     $("cnInstitutionAmount").value = item._subscription?.amount ?? 5000;
     $("cnInstitutionPlan").value = item._subscription?.plan_name || "Starter";
     $("cnInstitutionCycle").value = item._subscription?.billing_cycle || "monthly";
-    $("cnInstitutionAdmin").value = item._adminEmail || "";
+    $("cnInstitutionAdmin").value = item.admin_email || "";
     renderModuleOptions(item._modules || []);
     $("cnInstitutionSave").textContent = "Update institution";
     $("cnInstitutionFormTitle").textContent = "Edit institution";
@@ -158,12 +158,14 @@
     const slug = $("cnInstitutionSlug").value.trim().toLowerCase();
     if (!/^[A-Z0-9-]{2,12}$/.test(code)) return notify("Use 2–12 letters, numbers or hyphens for the institution code.", "error");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return notify("Use a URL-friendly slug (lowercase letters, numbers and hyphens).", "error");
+    const adminEmail = $("cnInstitutionAdmin").value.trim().toLowerCase();
     const amount = Number($("cnInstitutionAmount").value);
     if (!Number.isFinite(amount) || amount < 0) return notify("Enter a valid subscription amount.", "error");
     const payload = {
       name, short_code:code, slug, institution_type:$("cnInstitutionType").value,
       country:$("cnInstitutionCountry").value.trim() || "Kenya",
       contact_email:$("cnInstitutionEmail").value.trim() || null,
+      admin_email:adminEmail || null,
       contact_phone:$("cnInstitutionPhone").value.trim() || null,
       website_url:$("cnInstitutionWebsite").value.trim() || null,
       logo_url:$("cnInstitutionLogo").value.trim() || null,
@@ -175,7 +177,6 @@
       created_by:currentUser.id
     };
     const enabledModules = [...document.querySelectorAll('input[name="cnModule"]:checked')].map(x => x.value);
-    const adminEmail = $("cnInstitutionAdmin").value.trim().toLowerCase();
     setBusy(true);
     try {
       let saved, error;
@@ -204,6 +205,8 @@
         if (profileError) throw profileError;
         const target = profiles?.[0];
         if (target?.user_id) {
+          const {error:removeOldAdminsError} = await sb.from("institution_users").delete().eq("institution_id",saved.id).eq("role","institution_admin").neq("user_id",target.user_id);
+          if (removeOldAdminsError) throw removeOldAdminsError;
           const {error:membershipError} = await sb.from("institution_users").upsert({
             institution_id:saved.id,user_id:target.user_id,role:"institution_admin",status:"active"
           },{onConflict:"institution_id,user_id"});
