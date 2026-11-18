@@ -1174,7 +1174,19 @@ async function profileWriteAudit(action,module,targetTable,targetId,description,
       const session=sessionData?.session;
       const ua=navigator.userAgent||'';
       let ipAddress=null;
-      try{const {data:sessionRow}=await sb.from('user_sessions').select('ip_address').eq('user_id',profileData.id).order('last_activity',{ascending:false}).limit(1).maybeSingle();ipAddress=sessionRow?.ip_address||null;}catch(_){}
+      // Only attribute an IP from the exact browser session that owns this action.
+      // The most recently active session may belong to another device and must not be misattributed.
+      const currentSessionRowId=localStorage.getItem('session_id');
+      if(currentSessionRowId){
+        try{
+          const {data:sessionRow,error:sessionLookupError}=await sb.from('user_sessions')
+            .select('ip_address')
+            .eq('id',currentSessionRowId)
+            .eq('user_id',profileData.id)
+            .maybeSingle();
+          if(!sessionLookupError)ipAddress=sessionRow?.ip_address||null;
+        }catch(_){}
+      }
       const device=/iPad|Tablet/i.test(ua)?'Tablet':/iPhone|Android.*Mobile|Mobile/i.test(ua)?'Mobile':/Android/i.test(ua)?'Android device':/Windows/i.test(ua)?'Windows computer':/Macintosh|Mac OS/i.test(ua)?'Mac computer':'Desktop / unknown';
       const details={
         description:String(description||action),
