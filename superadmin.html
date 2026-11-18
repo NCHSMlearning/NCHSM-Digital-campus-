@@ -853,6 +853,18 @@
                     </a>
                 </li>
 
+                <!-- CAMPUS NEXUS PLATFORM MANAGEMENT -->
+                <li class="nav-section" style="padding:16px 12px 8px;margin-top:4px;">
+                    <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.58;font-weight:700;">Campus Nexus Platform</span>
+                </li>
+                <li style="margin-bottom:2px;">
+                    <a href="#" data-tab="institutions" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:600;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-building" style="width:20px;text-align:center;color:#5eead4;"></i>
+                        <span>Institution Management</span>
+                        <span id="cnInstitutionNavBadge" style="margin-left:auto;background:rgba(20,184,166,.2);padding:1px 8px;border-radius:20px;font-size:10px;">—</span>
+                    </a>
+                </li>
+
                 <!-- ======================================== -->
                 <!-- SECTION 2: USER MANAGEMENT              -->
                 <!-- ======================================== -->
@@ -14822,6 +14834,115 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
         </div>
     </div>
 
+
+<!-- CAMPUS NEXUS: MULTI-INSTITUTION MANAGEMENT -->
+<section id="institutions" class="tab-content" style="display:none;">
+<style>
+#institutions{color:#0f172a}
+#institutions .cn-head{background:linear-gradient(120deg,#082f49,#0f766e);color:#fff;padding:24px;border-radius:18px;margin-bottom:20px;box-shadow:0 12px 30px rgba(8,47,73,.15)}
+#institutions .cn-head h2{margin:0;font-size:22px;font-weight:800;display:flex;align-items:center;gap:12px}
+#institutions .cn-head p{margin:7px 0 0;color:#d5f4ef;font-size:13px}
+#institutions .cn-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:18px 0}
+#institutions .cn-stat{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;box-shadow:0 3px 12px rgba(15,23,42,.035)}
+#institutions .cn-stat small{display:block;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+#institutions .cn-stat strong{display:block;font-size:26px;margin-top:6px;color:#0f172a}
+#institutions .cn-panel{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 4px 16px rgba(15,23,42,.04)}
+#institutions .cn-panel h3{font-size:16px;margin:0 0 5px;color:#0f3b52}
+#institutions .cn-muted{font-size:12px;color:#64748b;margin:0 0 17px}
+#institutions .cn-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#institutions .cn-field{min-width:0}
+#institutions .cn-field label{display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px}
+#institutions .cn-field input,#institutions .cn-field select{box-sizing:border-box;width:100%;min-height:42px;border:1px solid #cbd5e1;border-radius:9px;padding:9px 11px;background:#fff;color:#0f172a;font-size:13px;outline:none}
+#institutions .cn-field input:focus,#institutions .cn-field select:focus{border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.12)}
+#institutions .cn-span{grid-column:1/-1}
+#institutions .cn-colors{display:flex;gap:12px;align-items:center}
+#institutions .cn-colors input{width:55px;padding:4px;min-height:38px}
+#institutions .cn-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#institutions .cn-module-option{display:flex;gap:9px;align-items:center;padding:10px;border:1px solid #e2e8f0;border-radius:9px;font-size:12px;color:#334155;background:#f8fafc}
+#institutions .cn-module-option input{accent-color:#0f766e}
+#institutions .cn-primary{background:#0f766e;color:#fff;border:0;border-radius:9px;padding:11px 17px;font-size:12px;font-weight:800;cursor:pointer}
+#institutions .cn-secondary{background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:9px;padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer}
+#institutions button:disabled{opacity:.55;cursor:not-allowed}
+#institutions .cn-table-wrap{width:100%;overflow-x:auto;border:1px solid #e2e8f0;border-radius:12px;-webkit-overflow-scrolling:touch}
+#institutions table{border-collapse:collapse;width:100%;min-width:850px;background:#fff}
+#institutions th,#institutions td{padding:12px 13px;text-align:left;border-bottom:1px solid #edf2f7;font-size:12px;vertical-align:middle}
+#institutions th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+#institutions .cn-school{display:flex;align-items:center;gap:10px;min-width:220px}
+#institutions .cn-school-mark{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;flex-shrink:0}
+#institutions .cn-school-mark img{width:100%;height:100%;object-fit:contain;background:#fff}
+#institutions .cn-school strong{display:block;color:#0f172a;font-size:12px}
+#institutions .cn-school small,#institutions .cn-subline{display:block;color:#64748b;font-size:10px;margin-top:3px}
+#institutions .cn-status{display:inline-block;padding:4px 9px;border-radius:20px;font-size:10px;font-weight:800}
+#institutions .cn-status-active{background:#dcfce7;color:#166534}
+#institutions .cn-status-suspended{background:#fee2e2;color:#991b1b}
+#institutions .cn-status-pending{background:#fef3c7;color:#92400e}
+#institutions .cn-row-action{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:7px 10px;color:#0f766e;font-size:11px;font-weight:800;cursor:pointer}
+#institutions .cn-empty{text-align:center;padding:28px;color:#64748b}
+#institutions .cn-alert{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px 14px;border-radius:10px;font-size:12px;margin-bottom:14px}
+@media(max-width:760px){#institutions .cn-stats{grid-template-columns:1fr 1fr}#institutions .cn-grid{grid-template-columns:1fr}#institutions .cn-span{grid-column:auto}#institutions .cn-modules{grid-template-columns:1fr}#institutions .cn-panel{padding:15px}#institutions .cn-head{padding:18px}#institutions .cn-head h2{font-size:18px}}
+</style>
+
+<div class="cn-head">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:15px;flex-wrap:wrap">
+    <div><h2><i class="fas fa-building"></i> Institution Management</h2>
+      <p>Register and manage institutions operating on the Campus Nexus platform.</p></div>
+    <span style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);padding:7px 11px;border-radius:20px;font-size:11px;font-weight:700">MULTI-INSTITUTION CONTROL</span>
+  </div>
+</div>
+
+<div id="cnInstitutionAccessError" class="cn-alert" hidden></div>
+<div class="cn-stats">
+  <div class="cn-stat"><small>Registered institutions</small><strong id="cnInstitutionCount">0</strong></div>
+  <div class="cn-stat"><small>Active institutions</small><strong id="cnInstitutionActive">0</strong></div>
+  <div class="cn-stat"><small>Suspended institutions</small><strong id="cnInstitutionSuspended">0</strong></div>
+</div>
+
+<div class="cn-panel">
+  <h3 id="cnInstitutionFormTitle">Register a new institution</h3>
+  <p class="cn-muted">Create the institution record, configure its portal identity, enable modules and set its subscription.</p>
+  <form id="cnInstitutionForm">
+    <div class="cn-grid">
+      <div class="cn-field"><label for="cnInstitutionName">Institution name *</label><input id="cnInstitutionName" required maxlength="160" placeholder="e.g. Nakuru College of Health Sciences and Management"></div>
+      <div class="cn-field"><label for="cnInstitutionCode">Institution code *</label><input id="cnInstitutionCode" required maxlength="12" placeholder="e.g. NCHSM"></div>
+      <div class="cn-field"><label for="cnInstitutionSlug">Portal slug *</label><input id="cnInstitutionSlug" required maxlength="60" placeholder="e.g. nchsm"></div>
+      <div class="cn-field"><label for="cnInstitutionType">Institution type</label><select id="cnInstitutionType"><option value="college">College</option><option value="university">University</option><option value="medical_school">Medical school</option><option value="tvET">TVET institution</option><option value="training_centre">Training centre</option><option value="other">Other</option></select></div>
+      <div class="cn-field"><label for="cnInstitutionCountry">Country</label><input id="cnInstitutionCountry" value="Kenya"></div>
+      <div class="cn-field"><label for="cnInstitutionEmail">Official contact email</label><input id="cnInstitutionEmail" type="email" placeholder="admin@institution.ac.ke"></div>
+      <div class="cn-field"><label for="cnInstitutionPhone">Contact phone</label><input id="cnInstitutionPhone" type="tel" placeholder="+254…"></div>
+      <div class="cn-field"><label for="cnInstitutionWebsite">Website URL</label><input id="cnInstitutionWebsite" type="url" placeholder="https://institution.ac.ke"></div>
+      <div class="cn-field"><label for="cnInstitutionLogo">Logo image URL</label><input id="cnInstitutionLogo" type="url" placeholder="https://… (logo hosted image URL)"></div>
+      <div class="cn-field"><label for="cnInstitutionDomain">Portal domain / subdomain</label><input id="cnInstitutionDomain" placeholder="e.g. nchsm.campusnexus.co.ke"></div>
+      <div class="cn-field cn-span"><label>Institution brand colours</label><div class="cn-colors"><span style="font-size:11px;color:#64748b">Primary</span><input id="cnInstitutionColor" type="color" value="#082f49"><span style="font-size:11px;color:#64748b">Accent</span><input id="cnInstitutionAccent" type="color" value="#0f766e"></div></div>
+      <div class="cn-field"><label for="cnInstitutionStatus">Institution status</label><select id="cnInstitutionStatus"><option value="active">Active</option><option value="pending">Pending setup</option><option value="suspended">Suspended</option></select></div>
+      <div class="cn-field"><label for="cnInstitutionAdmin">Institution administrator email (existing portal account)</label><input id="cnInstitutionAdmin" type="email" placeholder="admin@institution.ac.ke"></div>
+      <div class="cn-field"><label for="cnInstitutionPlan">Subscription package</label><select id="cnInstitutionPlan"><option>Starter</option><option>Growth</option><option>Professional</option><option>Enterprise</option><option>Legacy Institution</option><option>Custom</option></select></div>
+      <div class="cn-field"><label for="cnInstitutionAmount">Subscription amount (KES)</label><input id="cnInstitutionAmount" type="number" min="0" step="100" value="5000" required></div>
+      <div class="cn-field"><label for="cnInstitutionCycle">Billing cycle</label><select id="cnInstitutionCycle"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annually">Annually</option><option value="custom">Custom</option></select></div>
+      <div class="cn-field cn-span"><label>Enabled platform modules</label><div id="cnModuleOptions" class="cn-modules"></div></div>
+    </div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:18px">
+      <button id="cnInstitutionSave" class="cn-primary" type="submit">Add institution</button>
+      <button id="cnInstitutionCancel" class="cn-secondary" type="button" hidden>Cancel editing</button>
+    </div>
+  </form>
+</div>
+
+<div class="cn-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+    <div><h3>Registered institutions</h3><p class="cn-muted" style="margin:4px 0 0">Manage institution status, subscription, portal details and enabled services.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="cnInstitutionSearch" type="search" placeholder="Search institutions…" style="min-height:38px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:12px">
+      <button id="cnInstitutionRefresh" type="button" class="cn-secondary"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+  </div>
+  <div class="cn-table-wrap"><table>
+    <thead><tr><th>Institution</th><th>Status</th><th>Subscription</th><th>Contact</th><th>Portal domain</th><th>Action</th></tr></thead>
+    <tbody id="cnInstitutionRows"><tr><td colspan="6" class="cn-empty">Loading institutions…</td></tr></tbody>
+  </table></div>
+</div>
+<div class="cn-alert">Important: registering an institution creates its management record and configuration. It does not automatically provision DNS, create a new Auth account, or migrate legacy NCHSM academic records. Tenant-wide academic data isolation requires a separate staged migration of existing data tables and their Row Level Security policies.</div>
+</section>
+
 <!-- ============================================ -->
 <!-- EXTERNAL DEPENDENCIES                        -->
 <!-- ============================================ -->
@@ -15138,6 +15259,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 <!-- MAIN APPLICATION - ES MODULE                  -->
 <!-- ============================================ -->
 <script type="module" src="script.js" defer></script>
+<script type="module" src="js/campus-nexus-institutions.js?v=20261118-institutions-v1"></script>
 <!-- ============================================ -->
  <!-- ============================================ -->
 <!-- SUPER ADMIN PROFILE MODULE                   -->
