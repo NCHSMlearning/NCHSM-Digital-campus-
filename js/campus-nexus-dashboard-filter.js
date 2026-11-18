@@ -158,7 +158,7 @@
     const select=$("cnGlobalInstitutionFilter");
     if(select){
       const saved=localStorage.getItem(SCOPE_KEY);
-      const current=select.value||saved||"all";
+      const current=saved||select.value||"all";
       select.innerHTML='<option value="all">All institutions</option>'+rows.map(row =>
         '<option value="'+row.id.replace(/"/g,"")+'">'+
         String(row.name||"Unnamed institution").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+
