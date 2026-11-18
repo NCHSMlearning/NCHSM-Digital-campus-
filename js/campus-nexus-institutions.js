@@ -272,8 +272,12 @@
             institution_id:saved.id,user_id:target.user_id,role:"institution_admin",status:"active"
           },{onConflict:"institution_id,user_id"});
           if (membershipError) throw membershipError;
+          const {error:claimError} = await sb.from("institutions").update({
+            first_admin_user_id:target.user_id,first_admin_claimed_at:new Date().toISOString()
+          }).eq("id",saved.id).is("first_admin_user_id",null);
+          if (claimError) throw claimError;
         } else {
-          adminNotice = " The administrator email was saved as the contact, but no existing portal account matched it; create their account before assigning access.";
+          adminNotice = " The first institution administrator is reserved for this exact email. When its owner registers through the generated school link, the account will receive institution-level administrator access.";
         }
       }
       await writeAudit(saved.id,editingId ? "institution_updated" : "institution_created",
