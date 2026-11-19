@@ -97,9 +97,8 @@
     if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").required = custom;
     const sharedLogin = $("cnSharedLoginPreview");
     const sharedRegistration = $("cnSharedRegistrationPreview");
-    const schoolCode = String($("cnInstitutionSchoolCode")?.value || "101").trim();
     if (sharedLogin) sharedLogin.textContent = "https://campusnexus.co.ke/login";
-    if (sharedRegistration) sharedRegistration.textContent = "https://campusnexus.co.ke/register?school_code=" + (/^[0-9]{3}$/.test(schoolCode) ? schoolCode : "101");
+    if (sharedRegistration) sharedRegistration.textContent = "https://campusnexus.co.ke/register?school_code=YOUR_CODE";
   }
 
   function resetForm() {
@@ -173,9 +172,9 @@
         '<td><span class="cn-status cn-status-' + esc(i.status) + '">' + status + '</span></td>' +
         '<td>' + esc(i._subscription?.plan_name || "—") + '<small class="cn-subline">' +
         (i._subscription ? esc(i._subscription.currency) + " " + Number(i._subscription.amount).toLocaleString() + " / " + esc(i._subscription.billing_cycle) : "Not configured") + '</small></td>' +
-        '<td>' + esc(i.contact_email || "—") + '</td><td>' + (registrationUrl
-          ? '<a href="' + esc(registrationUrl) + '" target="_blank" rel="noopener">Registration link</a><button class="cn-row-action" type="button" data-copy-registration="' + esc(i.id) + '">Copy</button>'
-          : esc(i.portal_domain || "Domain not configured")) + '</td>' +
+        '<td>' + esc(i.contact_email || "—") + '</td><td>' +
+          '<a href="' + esc(i._loginUrl || "https://campusnexus.co.ke/login") + '" target="_blank" rel="noopener">Login portal</a>' +
+          (registrationUrl ? '<br><a href="' + esc(registrationUrl) + '" target="_blank" rel="noopener">' + (i.portal_mode === "custom_website" ? "Institution portal" : "Registration link") + '</a><button class="cn-row-action" type="button" data-copy-registration="' + esc(i.id) + '">Copy</button>' : '<small class="cn-subline">School code pending</small>') + '</td>' +
         '<td><div class="cn-row-actions"><button class="cn-row-action" type="button" data-edit="' + esc(i.id) + '">Manage</button>' +
         (i.status === "suspended" ? '<button class="cn-row-action" type="button" data-status="' + esc(i.id) + '" data-next="active">Activate</button>' :
         '<button class="cn-row-action cn-row-secondary" type="button" data-status="' + esc(i.id) + '" data-next="suspended">Suspend</button>') +
@@ -237,7 +236,8 @@
       const sharedRegistrationUrl = "https://campusnexus.co.ke/register?school_code=" + encodeURIComponent(String(i.school_code || ""));
       const isCustomPortal = i.portal_mode === "custom_website" && Boolean(i.custom_login_url);
       const loginUrl = isCustomPortal ? i.custom_login_url : sharedLoginUrl;
-      const registrationUrl = isCustomPortal ? i.custom_login_url : sharedRegistrationUrl;
+      const hasSchoolCode = /^[0-9]{3}$/.test(String(i.school_code || ""));
+      const registrationUrl = isCustomPortal ? i.custom_login_url : (hasSchoolCode ? sharedRegistrationUrl : "");
       return {...i, _modules:modules.filter(x => x.institution_id === i.id && x.enabled).map(x => x.module_key),
         _subscription:sub || null, _subscriptionId:sub?.id || null, _adminUserId:member?.user_id || null,
         _loginUrl:loginUrl, _registrationUrl:registrationUrl, _registrationCode:registration?.code || null};
@@ -347,7 +347,8 @@
       }
       await writeAudit(saved.id,editingId ? "institution_updated" : "institution_created",
         {name:saved.name,short_code:saved.short_code,status:saved.status,modules:enabledModules,subscription_plan:subPayload.plan_name,admin_email:adminEmail || null});
-      notify((editingId ? "Institution updated." : "Institution created successfully.") + adminNotice,"success");
+      const schoolCodeNotice = saved.school_code ? " School code: " + saved.school_code + "." : " School code will appear after the three-digit code migration is applied.";
+      notify((editingId ? "Institution updated." : "Institution created successfully.") + schoolCodeNotice + adminNotice,"success");
       resetForm();
       await loadInstitutions();
     } catch (error) {
