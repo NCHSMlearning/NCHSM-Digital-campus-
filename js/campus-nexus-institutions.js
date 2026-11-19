@@ -168,7 +168,7 @@
       const registrationUrl = i._registrationUrl || "";
       return '<tr><td><div class="cn-school"><span class="cn-school-mark" style="background:' + esc(i.primary_color || "#082f49") + '">' +
         (i.logo_url ? '<img src="' + esc(i.logo_url) + '" alt="" onerror="this.style.display=\'none\'">' : '<i class="fas fa-school"></i>') +
-        '</span><span><strong>' + esc(i.name) + '</strong><small>' + esc(i.short_code) + ' · ' + esc(i.country || "") + '</small></span></div></td>' +
+        '</span><span><strong>' + esc(i.name) + '</strong><small>' + esc(i.short_code) + ' · ' + esc(i.country || "") + '</small><small class="cn-subline">School code: <strong>' + esc(i.school_code || "Pending") + '</strong></small></span></div></td>' +
         '<td><span class="cn-status cn-status-' + esc(i.status) + '">' + status + '</span></td>' +
         '<td>' + esc(i._subscription?.plan_name || "—") + '<small class="cn-subline">' +
         (i._subscription ? esc(i._subscription.currency) + " " + Number(i._subscription.amount).toLocaleString() + " / " + esc(i._subscription.billing_cycle) : "Not configured") + '</small></td>' +
