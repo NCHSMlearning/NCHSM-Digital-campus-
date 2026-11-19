@@ -1526,12 +1526,7 @@ main.main>header{width:100%;max-width:100%;min-width:0}
                                 <span>Welcome Message</span>
                             </a>
                         </li>
-                        <li>
-                            <a href="#" data-tab="backup" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                                <i class="fas fa-database" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                                <span>Backup & Restore</span>
-                            </a>
-                        </li>
+                        
                     </ul>
                 </li>
 
@@ -14163,6 +14158,48 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 <div class="cn-domain-note"><i class="fas fa-info-circle" style="color:#0f766e;margin-top:2px"></i><span><strong>Platform setup note:</strong> Institution registration stores its details and settings. Portal domains still require DNS configuration, administrator accounts must exist before access can be assigned, and legacy academic records need a separate tenant migration.</span></div>
 </section>
 
+        
+<section id="staff-management" class="tab-content" style="display:none;padding:0 4px;">
+  <style>
+    #staff-management .staff-directory-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+    #staff-management .staff-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+    #staff-management .staff-directory-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:17px;box-shadow:0 3px 12px rgba(15,23,42,.04)}
+    #staff-management .staff-directory-card small{display:block;color:#64748b;font-size:12px;margin-bottom:8px}
+    #staff-management .staff-directory-card strong{font-size:25px;color:#0f172a}
+    #staff-management .staff-directory-tools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(140px,1fr));gap:10px;margin-bottom:15px}
+    #staff-management .staff-directory-tools input,#staff-management .staff-directory-tools select{width:100%;min-width:0;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a}
+    #staff-management .staff-directory-table-wrap{width:100%;overflow-x:auto;border:1px solid #e2e8f0;border-radius:13px;background:#fff;-webkit-overflow-scrolling:touch}
+    #staff-management table{min-width:900px;width:100%;border-collapse:collapse}
+    #staff-management th,#staff-management td{padding:12px 14px;text-align:left;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    #staff-management th{background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+    #staff-management td{font-size:13px;color:#1e293b}
+    #staff-management .staff-directory-empty{text-align:center;padding:36px 18px;color:#64748b;white-space:normal}
+    #staff-management .staff-directory-error{color:#b91c1c}
+    #staff-management .staff-directory-status{display:inline-block;padding:4px 9px;border-radius:99px;font-size:11px;font-weight:700}
+    #staff-management .staff-directory-status.is-active{background:#dcfce7;color:#166534}
+    #staff-management .staff-directory-status.is-inactive{background:#fee2e2;color:#991b1b}
+    #staff-management .staff-directory-notice{padding:13px 15px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:11px;font-size:13px;line-height:1.5;margin-bottom:17px}
+    @media(max-width:700px){#staff-management .staff-directory-tools{grid-template-columns:1fr 1fr}#staff-management .staff-directory-tools input{grid-column:1/-1}}
+  </style>
+  <div class="staff-directory-header">
+    <div><h2 style="margin:0 0 6px;color:#0f172a;font-size:24px;">Staff Management</h2><p style="margin:0;color:#64748b;font-size:13px;">Institution staff directory and workforce overview</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="staffDirectoryRefresh" type="button" class="btn-action"><i class="fas fa-rotate"></i> Refresh</button><button id="staffDirectoryExport" type="button" class="btn-action" style="background:#0f766e"><i class="fas fa-file-csv"></i> Export CSV</button></div>
+  </div>
+  <div class="staff-directory-notice"><strong>Security notice:</strong> This directory intentionally excludes bank details, national ID data, payroll information and password fields. Staff account creation and password resets are being moved to secure authentication workflows; this page will not store passwords in browser-side encoding.</div>
+  <div class="staff-directory-grid">
+    <div class="staff-directory-card"><small>Total staff</small><strong id="staffDirectoryTotal">—</strong></div><div class="staff-directory-card"><small>Active staff</small><strong id="staffDirectoryActive">—</strong></div><div class="staff-directory-card"><small>Academic staff</small><strong id="staffDirectoryAcademic">—</strong></div><div class="staff-directory-card"><small>Departments</small><strong id="staffDirectoryDepartments">—</strong></div>
+  </div>
+  <div class="staff-directory-tools">
+    <input id="staffDirectorySearch" type="search" placeholder="Search name, staff ID, email, phone or department" aria-label="Search staff">
+    <select id="staffDirectoryDepartment" aria-label="Filter department"><option value="all">All departments</option></select>
+    <select id="staffDirectoryProgram" aria-label="Filter program"><option value="all">All programs</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
+    <select id="staffDirectoryStatus" aria-label="Filter status"><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+  </div>
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 2px 10px;color:#64748b;font-size:12px"><span id="staffDirectoryResultCount">Loading records…</span><span id="staffDirectoryUpdated"></span></div>
+  <div class="staff-directory-table-wrap"><table><thead><tr><th>Staff member</th><th>Staff ID</th><th>Department</th><th>Designation</th><th>Email</th><th>Phone</th><th>Status</th></tr></thead><tbody id="staffDirectoryBody"><tr><td colspan="7" class="staff-directory-empty">Open Staff Management to load records.</td></tr></tbody></table></div>
+  <p id="staffDirectoryError" role="status" style="color:#b91c1c;font-size:12px;margin-top:10px"></p>
+</section>
+
         </main>
     </div>
 
@@ -14612,6 +14649,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
                 }
             });
             if (typeof loadSectionData === 'function') loadSectionData(tabId);
+            if (tabId === 'staff-management' && typeof window.initStaffDirectory === 'function') window.initStaffDirectory();
         };
     }
 
@@ -14764,6 +14802,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
  <!-- ============================================ -->
 <!-- SUPER ADMIN PROFILE MODULE                   -->
 <!-- ============================================ -->
+<script src="js/superadmin-staff-directory.js?v=20261119-staff-directory-v1" defer></script>
 <script src="js/superadmin-profile.js?v=20261117-system-audit-v5" defer></script>
 <script src="js/superadmin-audit-centre.js?v=20261118-tenant-audit-v1" defer></script>
 <script src="js/superadmin-lecturer-reports-review.js?v=20261109-portfolio1" defer></script>
