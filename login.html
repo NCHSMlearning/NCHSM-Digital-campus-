@@ -13,7 +13,7 @@
         script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://unpkg.com https://www.gstatic.com https://challenges.cloudflare.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com;
         font-src 'self' https://fonts.gstatic.com;
-        img-src 'self' data: https://raw.githubusercontent.com https://www.gstatic.com https://img.icons8.com https://api.qrserver.com;
+        img-src 'self' data: https://lwhtjozfsmbyihenfunw.supabase.co https://raw.githubusercontent.com https://www.gstatic.com https://img.icons8.com https://api.qrserver.com;
         connect-src 'self' https://*.supabase.co https://api.ipify.org https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com;
         frame-src https://accounts.google.com https://challenges.cloudflare.com;
         worker-src 'self' blob:;
@@ -2163,5 +2163,40 @@ body.dark-theme #loginButton,body.dark-theme .login-button{background:linear-gra
 
 
 <script src="/js/nchsm-mobile-enhancements.js?v=8" defer></script>
+
+<script id="campus-nexus-institution-login-branding">
+(function(){
+  "use strict";
+  const params = new URLSearchParams(window.location.search);
+  const schoolCode = (params.get("school_code") || "").trim();
+  if (!schoolCode || !window.supabase?.createClient) return;
+  const client = window.supabase.createClient(
+    "https://lwhtjozfsmbyihenfunw.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53IiwiaWF0IjoxNzU5NjU4MTI3LCJleHAiOjIwNzUyMzQxMjd9.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk"
+  );
+  client.rpc("resolve_institution_registration_context",{p_code:schoolCode,p_host:null})
+    .then(({data,error})=>{
+      if(error || !data?.institution_id) return;
+      const logo = document.querySelector(".logo-wrapper .logo img");
+      const name = document.querySelector(".logo-wrapper .college-name");
+      const welcome = document.querySelector(".welcome-section h2");
+      if(logo && data.logo_url && /^https:\/\//i.test(data.logo_url)){
+        logo.src=data.logo_url;
+        logo.alt=(data.institution_name || "Institution")+" logo";
+      }
+      if(name) name.textContent=data.institution_name || "Your institution";
+      if(welcome) welcome.textContent="Welcome to "+(data.institution_name || "your institution");
+      document.title=(data.institution_name || "Institution")+" | Secure Sign In";
+      const motto=document.querySelector(".logo-wrapper .motto");
+      if(motto){
+        const lines=[data.physical_address,data.postal_address].filter(Boolean);
+        motto.textContent=lines.join(" · ") || "Secure institution portal";
+      }
+      document.documentElement.dataset.institutionLogin="true";
+    })
+    .catch(error=>console.warn("Institution login branding could not be loaded:",error));
+})();
+</script>
+
 </body>
 </html>
