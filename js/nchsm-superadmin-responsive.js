@@ -2,8 +2,11 @@
 (function(){
  'use strict';
  const selector='.main table,.tab-content table,.dashboard-content table,.table-container table';
+ // Respect existing component-level scroll regions. Wrapping these again creates
+ // nested horizontal scrollbars and makes tables difficult to use on phones.
+ const existingScrollRegions='.table-responsive,.nchsm-table-scroll,.cn-table-wrap,.table-container,.table-wrapper,.data-table-wrapper';
  function wrap(table){
-  if(!table||table.closest('.table-responsive,.nchsm-table-scroll'))return;
+  if(!table||table.closest(existingScrollRegions))return;
   const parent=table.parentElement;if(!parent)return;
   const shell=document.createElement('div');
   shell.className='nchsm-table-scroll';
