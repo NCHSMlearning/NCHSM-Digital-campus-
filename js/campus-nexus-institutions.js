@@ -95,7 +95,7 @@
     if ($("cnInstitutionPortalMode")) $("cnInstitutionPortalMode").value = "campus_nexus";
     if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").value = "";
     if ($("cnInstitutionAdminPortal")) $("cnInstitutionAdminPortal").value = "";
-    renderModuleOptions(["student_management","lecturer_portal","administrator_portal","learning_management","examinations","admin_exams","proctoring","finance","transcripts_certificates","analytics_reports"]);
+    renderModuleOptions(MODULES.map(([key]) => key));
     $("cnInstitutionSave").textContent = "Add institution";
     $("cnInstitutionFormTitle").textContent = "Register a new institution";
     $("cnInstitutionCancel").hidden = true;
@@ -338,7 +338,7 @@
   async function init() {
     const form = $("cnInstitutionForm");
     if (!form) return;
-    renderModuleOptions(["student_management","lecturer_portal","administrator_portal","learning_management","examinations","admin_exams","proctoring","finance","transcripts_certificates","analytics_reports"]);
+    renderModuleOptions(MODULES.map(([key]) => key));
     $("cnInstitutionCancel").addEventListener("click",resetForm);
     $("cnInstitutionSearch").addEventListener("input",renderRows);
     $("cnInstitutionFilter").addEventListener("change",renderRows);
