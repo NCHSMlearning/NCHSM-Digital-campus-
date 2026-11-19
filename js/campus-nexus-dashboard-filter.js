@@ -62,9 +62,7 @@
   }
 
   function rememberLegacyMetrics() {
-    const ids = ["dashboardOpenTickets",
-      "totalDailyCheckIns","overallCheckInCount","dashboardUrgentTickets","activeSessions",
-      "totalCourses","totalResources","dashboardTotalPrograms"];
+    const ids = ["dashboardOpenTickets","totalDailyCheckIns","overallCheckInCount","dashboardUrgentTickets","activeSessions","totalCourses","totalResources","dashboardTotalPrograms","dashboardTotalUnits","dashboardPendingUnitReg","dashboardUpcomingExams","dashboardPendingMessages","dashboardLecturersCount","dashboardAttendanceToday","dashboardTotalSessions","totalStaffCount","totalStaffCountDisplay","krchnCountDisplay","tvetCountDisplay","statsKrchnCount","statsTvetCount","statsProgramCount","activeProgramsCount","inactiveProgramsCount","totalIntakesCount","totalBlocksCount","dataIntegrityScore"];
     state.snapshot = {};
     ids.forEach(id => {
       const el = $(id);
@@ -322,81 +320,123 @@
 
   async function applyInstitutionScope(client,institution,platform) {
     const id=institution.id;
-    // Profiles are the authoritative tenant-owned roster. This includes legacy
-    // profile rows that predate or no longer have an auth.users membership.
+    // Institution-linked profile records are the only authoritative tenant roster.
     const profileResult=await client.from("consolidated_user_profiles_table")
-      .select("id,user_id,role,status").eq("institution_id",id);
+      .select("id,user_id,role,status",{count:"exact"}).eq("institution_id",id);
     if(profileResult.error) throw profileResult.error;
-    const profiles=profileResult.data||[];
-    const members=profiles;
-    const userIds=[...new Set(profiles.map(x=>x.user_id).filter(Boolean))];
-    const profileIds=profiles.map(x=>x.id).filter(Boolean);
-    const today=new Date(); today.setHours(0,0,0,0);
-    const todayIso=today.toISOString();
+    const members=profileResult.data||[];
+    const userIds=[...new Set(members.map(x=>x.user_id).filter(Boolean))];
+    const totalUsers=profileResult.count ?? members.length;
+
+    // Fetch role/status counts directly from the database so PostgREST row limits
+    // cannot silently under-count large institutions.
+    const [studentCount,pendingCount,activeCount] = await Promise.all([
+      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true})
+        .eq("institution_id",id).ilike("role","student"),
+      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true})
+        .eq("institution_id",id).ilike("status","pending"),
+      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true})
+        .eq("institution_id",id).ilike("status","active")
+    ]);
+    [studentCount,pendingCount,activeCount].forEach(result=>{if(result.error) throw result.error;});
+
+    // Nairobi local-day boundary, represented as an explicit +03:00 timestamp.
+    const nairobiDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Nairobi",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    const todayStart=new Date(nairobiDate+"T00:00:00+03:00").toISOString();
+
     const jobs=[];
     const add=(key,promise)=>jobs.push([key,promise]);
-    if(userIds.length){
-      add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("institution_id",id).eq("is_active",true));
-      add("attendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("institution_id",id));
-      add("todayAttendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("institution_id",id).gte("created_at",todayIso));
-      add("courses",client.from("courses").select("id",{count:"exact",head:true}).in("created_by",userIds).eq("institution_id",id));
-      add("resources",client.from("resources").select("id",{count:"exact",head:true}).in("uploaded_by",userIds).eq("institution_id",id));
-    }
-    if(profileIds.length) add("tickets",client.from("support_tickets").select("id,status,priority").in("student_id",userIds).eq("institution_id",id));
+    // These tables have their own institution_id column: always filter on it.
+    add("attendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).eq("institution_id",id));
+    add("todayAttendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true})
+      .eq("institution_id",id).gte("created_at",todayStart));
+    add("courses",client.from("courses").select("id",{count:"exact",head:true}).eq("institution_id",id));
+    add("resources",client.from("resources").select("id",{count:"exact",head:true}).eq("institution_id",id));
+    add("tickets",client.from("support_tickets").select("id,status,priority",{count:"exact"}).eq("institution_id",id));
+    add("pendingUnitRegistrations",client.from("student_unit_registrations").select("id",{count:"exact",head:true})
+      .eq("institution_id",id).ilike("status","pending"));
+    // user_sessions has no institution_id; scope it strictly through verified member IDs.
+    if(userIds.length) add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true})
+      .in("user_id",userIds).eq("is_active",true));
     const results={};
     for(const [key,promise] of jobs){
       const result=await promise;
-      if(result.error) { console.warn("[Campus Nexus dashboard filter]",key,result.error.message); results[key]={unavailable:true}; }
+      if(result.error){console.warn("[Campus Nexus dashboard filter]",key,result.error.message);results[key]={unavailable:true};}
       else results[key]=result;
     }
 
     const scopeDescription=$("cnDashboardScopeDescription");
-    if(scopeDescription) scopeDescription.textContent = members.length
-      ? "Showing institution-linked records only · "+members.length+" user memberships"
-      : "No users are assigned to this institution yet. Legacy academic records are not included until membership and tenant mapping are completed.";
-    const activeMembers=members.filter(x=>x.status==="active");
-    const students=members.filter(x=>String(x.role||"").toLowerCase()==="student");
-    const pending=members.filter(x=>x.status==="pending");
-    setMetric("totalUsers",fmt(members.length),"Users assigned to this institution");
-    setMetric("totalStudents",fmt(students.length),"Student memberships in this institution");
-    setMetric("pendingApprovals",fmt(pending.length),"Pending institution memberships");
-    setMetric("activeSessions",results.sessions?.unavailable?"—":fmt(results.sessions?.count||0),"Active sessions for institution members");
-    setMetric("totalDailyCheckIns",results.todayAttendance?.unavailable?"—":fmt(results.todayAttendance?.count||0),"Institution members · today");
-    setMetric("overallCheckInCount",results.attendance?.unavailable?"—":fmt(results.attendance?.count||0),"Institution members · all time");
-    setMetric("totalCourses",results.courses?.unavailable?"—":fmt(results.courses?.count||0),"Courses created by institution members");
-    setMetric("totalResources",results.resources?.unavailable?"—":fmt(results.resources?.count||0),"Resources uploaded by institution members");
+    if(scopeDescription) scopeDescription.textContent=totalUsers
+      ? "Showing institution-linked records only · "+fmt(totalUsers)+" assigned users"
+      : "No users are assigned to this institution yet. Unlinked legacy records are excluded.";
+    const students=studentCount.count||0;
+    const pending=pendingCount.count||0;
+    const active=activeCount.count||0;
+    const metricEntries={
+      totalUsers:{value:fmt(totalUsers),detail:"Users assigned to this institution"},
+      totalStudents:{value:fmt(students),detail:"Student profiles assigned to this institution"},
+      pendingApprovals:{value:fmt(pending),detail:"Pending institution profile approvals"},
+      activeSessions:{value:results.sessions?.unavailable?"—":fmt(results.sessions?.count||0),detail:"Active sessions for institution members"},
+      totalDailyCheckIns:{value:results.todayAttendance?.unavailable?"—":fmt(results.todayAttendance?.count||0),detail:"Institution attendance · today (Nairobi time)"},
+      overallCheckInCount:{value:results.attendance?.unavailable?"—":fmt(results.attendance?.count||0),detail:"Institution attendance · all time"},
+      totalCourses:{value:results.courses?.unavailable?"—":fmt(results.courses?.count||0),detail:"Courses linked to this institution"},
+      totalResources:{value:results.resources?.unavailable?"—":fmt(results.resources?.count||0),detail:"Resources linked to this institution"},
+      dashboardPendingUnitReg:{value:results.pendingUnitRegistrations?.unavailable?"—":fmt(results.pendingUnitRegistrations?.count||0),detail:"Pending unit registrations for this institution"}
+    };
+    Object.entries(metricEntries).forEach(([metric,entry])=>setMetric(metric,entry.value,entry.detail));
 
-    if(results.tickets?.unavailable){markUnavailable("dashboardOpenTickets","Ticket ownership could not be verified");markUnavailable("dashboardUrgentTickets","Ticket ownership could not be verified");}
-    else {
-      const tickets=results.tickets?.data||[];
+    if(results.tickets?.unavailable){
+      markUnavailable("dashboardOpenTickets","Institution ticket data unavailable · check permissions");
+      markUnavailable("dashboardUrgentTickets","Institution ticket data unavailable · check permissions");
+    } else {
+      const tickets=results.tickets.data||[];
       const open=tickets.filter(t=>!["closed","resolved","complete","completed"].includes(String(t.status||"").toLowerCase()));
       const urgent=open.filter(t=>["urgent","high","critical"].includes(String(t.priority||"").toLowerCase()));
-      setMetric("dashboardOpenTickets",fmt(open.length),"Open tickets for institution students");
-      setMetric("dashboardUrgentTickets",fmt(urgent.length),"Urgent tickets for institution students");
+      setMetric("dashboardOpenTickets",fmt(open.length),"Open tickets for this institution");
+      setMetric("dashboardUrgentTickets",fmt(urgent.length),"Urgent tickets for this institution");
     }
-    markUnavailable("dashboardTotalPrograms","Program records do not yet carry an institution link");
-    // Institution users and role memberships are the only valid basis for these counts.
+
+    // These legacy tables do not yet have a trustworthy institution_id. Never
+    // display their NCHSM/global totals while a tenant is selected.
+    [
+      ["dashboardTotalPrograms","Program records are not institution-linked"],
+      ["dashboardTotalUnits","Unit catalogue is not institution-linked"],
+      ["dashboardUpcomingExams","Exam records are not institution-linked"],
+      ["dashboardPendingMessages","Message records are not institution-linked"],
+      ["dashboardLecturersCount","Legacy staff summary is not institution-linked"],
+      ["dashboardAttendanceToday","Legacy attendance summary is not institution-linked"],
+      ["dashboardTotalSessions","Legacy session summary is not institution-linked"],
+      ["totalStaffCount","Legacy staff summary is not institution-linked"],
+      ["totalStaffCountDisplay","Legacy staff summary is not institution-linked"],
+      ["krchnCountDisplay","Legacy programme summary is not institution-linked"],
+      ["tvetCountDisplay","Legacy programme summary is not institution-linked"],
+      ["statsKrchnCount","Legacy programme summary is not institution-linked"],
+      ["statsTvetCount","Legacy programme summary is not institution-linked"],
+      ["statsProgramCount","Legacy programme summary is not institution-linked"],
+      ["activeProgramsCount","Programme table is not institution-linked"],
+      ["inactiveProgramsCount","Programme table is not institution-linked"],
+      ["totalIntakesCount","Intake records are not institution-linked"],
+      ["totalBlocksCount","Block records are not institution-linked"],
+      ["dataIntegrityScore","A tenant-specific integrity calculation is not available"]
+    ].forEach(([metric,reason])=>markUnavailable(metric,reason));
+
+    // System uptime is platform-wide, not tenant-owned; label it honestly.
+    const uptime=$("systemUptime");
+    if(uptime){const detail=uptime.closest(".dashboard-card")?.querySelector("p:last-child");if(detail)detail.textContent="Platform-wide service uptime";}
+
+    // Platform portfolio cards also obey the selected tenant filter.
     setPlatform("institutions","1","Selected institution");
     setPlatform("active",institution.status==="active"?"1":"0","Institution status: "+institution.status);
     setPlatform("suspended",institution.status==="suspended"?"1":"0","Suspension status");
     setPlatform("pending",institution.onboarding_status==="ready"?"0":"1","Setup: "+institution.onboarding_status);
-    setPlatform("members",fmt(members.length),fmt(activeMembers.length)+" active memberships");
+    setPlatform("members",fmt(totalUsers),fmt(active)+" active memberships");
     setPlatform("modules",fmt(platform.modules.filter(x=>x.institution_id===id&&x.enabled).length),"Enabled for this institution");
     setPlatform("subscriptions",fmt(platform.subscriptions.filter(x=>x.institution_id===id).length),"Subscriptions for this institution");
     setPlatform("audits",fmt(platform.audits.filter(x=>x.institution_id===id).length),"Audit events for this institution");
-    const profilesCard=$("totalUsers")?.closest(".dashboard-card");
-    if(profilesCard) profilesCard.classList.remove("cn-scope-unavailable");
 
-    lockScopedMetrics({
-      totalUsers:{value:fmt(members.length),detail:"Users assigned to this institution"},
-      totalStudents:{value:fmt(students.length),detail:"Student memberships in this institution"},
-      pendingApprovals:{value:fmt(pending.length),detail:"Pending institution memberships"},
-      activeSessions:{value:results.sessions?.unavailable?"—":fmt(results.sessions?.count||0),detail:"Active sessions for institution members"},
-      totalDailyCheckIns:{value:results.todayAttendance?.unavailable?"—":fmt(results.todayAttendance?.count||0),detail:"Institution members · today"},
-      overallCheckInCount:{value:results.attendance?.unavailable?"—":fmt(results.attendance?.count||0),detail:"Institution members · all time"},
-      totalCourses:{value:results.courses?.unavailable?"—":fmt(results.courses?.count||0),detail:"Courses created by institution members"},
-      totalResources:{value:results.resources?.unavailable?"—":fmt(results.resources?.count||0),detail:"Resources uploaded by institution members"}
-    });
+    // Guard every tenant-backed value against older dashboard loaders that may
+    // finish later and overwrite the filtered values with legacy global totals.
+    lockScopedMetrics(metricEntries);
   }
 
   async function refresh() {
