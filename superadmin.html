@@ -14229,16 +14229,16 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
         <div class="cn-portal-choice-grid">
           <label class="cn-portal-choice">
             <input type="radio" name="cnInstitutionPortalModeChoice" value="campus_nexus" checked>
-            <span class="cn-portal-choice-copy"><strong>Use the shared Campus Nexus portal</strong><small>Students, lecturers and administrators use the same secure Campus Nexus sign-in page. Their school code keeps each institution's accounts and data separate.</small><b>Shared login: campusnexus.co.ke/login</b><b>Registration: campusnexus.co.ke/register?school_code=101</b></span>
+            <span class="cn-portal-choice-copy"><strong>Use the shared Campus Nexus portal</strong><small>Students, lecturers and administrators use the same secure Campus Nexus sign-in page. Their school code keeps each institution's accounts and data separate.</small><b>Login: <span id="cnSharedLoginPreview">https://campusnexus.co.ke/login</span></b><b>Registration: <span id="cnSharedRegistrationPreview">https://campusnexus.co.ke/register?school_code=101</span></b></span>
           </label>
           <label class="cn-portal-choice">
             <input type="radio" name="cnInstitutionPortalModeChoice" value="custom_website">
             <span class="cn-portal-choice-copy"><strong>Use this institution's own portal</strong><small>Send users to a login page hosted on the institution's own domain or subdomain.</small><b>Example: portal.institution.ac.ke/login</b></span>
           </label>
         </div>
-        <small class="cn-help">The shared option is recommended for faster onboarding. The short Campus Nexus URLs must be routed to the Digital Campus application before being distributed.</small>
+        <small class="cn-help">Recommended for quick setup. All institutions use one login page; the three-digit school code identifies the institution during registration and the signed-in account is scoped to its institution. Configure the /login and /register routes on the Campus Nexus domain before sharing these links.</small>
       </div>
-      <div class="cn-field cn-span" id="cnCustomLoginWrap"><label for="cnInstitutionCustomLogin">Institution custom login URL</label><input id="cnInstitutionCustomLogin" type="url" placeholder="https://portal.institution.ac.ke/login"><small class="cn-help">Required only when you choose the institution's own portal.</small></div>
+      <div class="cn-field cn-span" id="cnCustomLoginWrap"><label for="cnInstitutionCustomLogin">Institution custom login URL</label><input id="cnInstitutionCustomLogin" type="url" placeholder="https://portal.institution.ac.ke/login"><small class="cn-help">Required only when you choose the institution's own portal. Enter the complete HTTPS login URL.</small></div>
       <div class="cn-field"><label for="cnInstitutionAdminPortal">Administrator portal URL</label><input id="cnInstitutionAdminPortal" type="url" placeholder="https://institution.ac.ke/admin or leave blank for Campus Nexus"><small class="cn-help">Set a dedicated administrator entry point, or leave blank to use the institution-scoped Campus Nexus admin portal.</small></div>
       <div class="cn-step-title cn-span"><span class="cn-step-number">4</span> Access, subscription & services</div>
       <div class="cn-field"><label for="cnInstitutionStatus">Institution status</label><select id="cnInstitutionStatus"><option value="active">Active</option><option value="pending">Pending setup</option><option value="suspended">Suspended</option></select></div>
