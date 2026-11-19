@@ -740,11 +740,13 @@
         document.querySelectorAll(".cn-platform-card").forEach(card=>card.style.display="none");
         const eyebrow=$("cnPlatformOverview")?.querySelector(".cn-global-eyebrow");
         if(eyebrow) eyebrow.textContent="CAMPUS NEXUS · INSTITUTION OPERATIONS";
-        document.querySelectorAll("#sidebar [onclick*=\"showTab('institutions')\"],#sidebar [onclick*='showTab(\\"institutions\\")'],#sidebar [data-tab='institutions']").forEach(item=>item.style.display="none");
         const navItems=[...document.querySelectorAll("#sidebar a,#sidebar button")];
         navItems.forEach(item=>{
           const label=(item.textContent||"").trim().toLowerCase();
-          if(/platform audit|system-wide audit|manage institutions|institution management/.test(label)) item.style.display="none";
+          const click=(item.getAttribute("onclick")||"").toLowerCase();
+          const tab=(item.dataset.tab||item.getAttribute("data-target")||"").toLowerCase();
+          if(click.includes("showtab('institutions')") || click.includes('showtab("institutions")') || tab.includes("institutions") ||
+             /platform audit|system-wide audit|manage institutions|institution management/.test(label)) item.style.display="none";
         });
       } else {
         if(institutionSelect) institutionSelect.disabled=false;
