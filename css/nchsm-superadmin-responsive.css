@@ -48,3 +48,53 @@ table{max-width:100%}
  .main,.main-content,#main-content{padding-left:11px!important;padding-right:11px!important}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Android browsers may use a ~980px layout viewport when "Desktop site"
+   is enabled. Treat compact/tablet viewports as touch layouts too. */
+@media(max-width:1100px){
+  html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
+  .container{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important}
+  #sidebar,.sidebar{
+    position:fixed!important;top:0!important;left:-105%!important;
+    width:min(300px,86vw)!important;max-width:86vw!important;height:100dvh!important;
+    margin:0!important;z-index:1200!important;transition:left .25s ease!important;
+  }
+  #sidebar.active,.sidebar.active{left:0!important}
+  .main,main.main{
+    display:block!important;width:100%!important;max-width:100%!important;
+    min-width:0!important;margin:0!important;
+    padding:76px 16px calc(32px + env(safe-area-inset-bottom,0px))!important;
+    overflow-x:clip!important;
+  }
+  .mobile-nav-toggle{
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    position:fixed!important;top:12px!important;left:12px!important;
+    width:44px!important;height:44px!important;padding:9px!important;
+    border:1px solid #dbe4ea!important;border-radius:12px!important;
+    background:#fff!important;box-shadow:0 4px 14px rgba(15,23,42,.16)!important;
+    z-index:1300!important;
+  }
+  .mobile-nav-toggle span{background:#082f49!important;margin:0!important}
+  body.sidebar-open:after{
+    content:"";position:fixed;inset:0;background:rgba(15,23,42,.48);
+    z-index:1100;pointer-events:auto;
+  }
+  .main header{padding-left:48px!important}
+  .main header h1{font-size:clamp(20px,3vw,28px)!important;line-height:1.2!important}
+  .main [style*="grid-template-columns"]:has(> .dashboard-card){
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+  .main .dashboard-card{min-width:0!important;padding:15px!important;overflow-wrap:anywhere}
+  .main .dashboard-card h3{font-size:11px!important;line-height:1.35!important}
+  #cnPlatformOverview{width:100%!important;max-width:100%!important}
+}
+@media(max-width:520px){
+  .main,main.main{padding-left:12px!important;padding-right:12px!important}
+  .main [style*="grid-template-columns"]:has(> .dashboard-card){
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;
+  }
+  .main .dashboard-card{padding:12px!important}
+  .main .dashboard-card strong,.main .dashboard-card .data{font-size:22px!important}
+  .main header{padding-left:46px!important}
+}
