@@ -749,7 +749,7 @@
         const moduleForTab = {
           "users":"student_management","pending":"admissions","enroll":"admissions",
           "units":"academic_management","unit-management":"academic_management","programs":"academic_management",
-          "cats":"examinations","marks-entry":"examinations","marks-approval":"examinations",
+          "cats":"admin_exams","marks-entry":"examinations","marks-approval":"examinations",
           "entry-control":"examinations","publish-marks":"examinations","nursing-system":"academic_management",
           "transcript-generator":"transcripts_certificates","certificate-management":"transcripts_certificates",
           "analytics-module":"analytics_reports","attendance":"attendance","calendar":"academic_management",
