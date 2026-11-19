@@ -2,16 +2,32 @@
  * Uses the existing authenticated Supabase client. Database RLS is authoritative.
  */
 (() => {
-  const MODULES = [
-    ["student_management", "Student management"],
-    ["learning_management", "Learning management system"],
-    ["examinations", "Examinations"],
-    ["proctoring", "Online proctoring"],
-    ["finance", "Finance & payments"],
-    ["human_resources", "HR & staff management"],
-    ["transcripts_certificates", "Transcripts & certificates"],
-    ["analytics_reports", "Analytics & reports"]
+  const MODULE_GROUPS = [
+    ["User portals", [
+      ["student_management", "Student portal", "Student accounts, profiles and academic records"],
+      ["lecturer_portal", "Lecturer portal", "Lecturer workspace, classes and teaching tools"],
+      ["administrator_portal", "Institution administrator portal", "Institution-level administration and oversight"]
+    ]],
+    ["Academics & assessment", [
+      ["academic_management", "Academic management", "Programmes, units, intakes and academic structure"],
+      ["examinations", "Examinations", "Exam scheduling, attempts and assessment workflows"],
+      ["admin_exams", "Admin Exams", "Administrator exam creation, management and oversight"],
+      ["proctoring", "Online proctoring", "Exam monitoring and proctoring tools"],
+      ["transcripts_certificates", "Transcripts & certificates", "Results, transcripts and certificate workflows"]
+    ]],
+    ["Institution operations", [
+      ["admissions", "Admissions", "Applicant intake and admission processing"],
+      ["attendance", "Attendance management", "Student and staff attendance workflows"],
+      ["learning_management", "Learning management system", "Learning resources, lessons and assignments"],
+      ["finance", "Finance & payments", "Student accounts, invoices and payments"],
+      ["human_resources", "HR & staff management", "Staff records and HR workflows"],
+      ["library", "Library", "Library resources and circulation"]
+    ]],
+    ["Insights & communication", [
+      ["analytics_reports", "Analytics & reports", "Institution dashboards and reporting"]
+    ]]
   ];
+  const MODULES = MODULE_GROUPS.flatMap(([, items]) => items);
   let sb, currentUser, editingId = null, institutions = [];
 
   const $ = (id) => document.getElementById(id);
@@ -43,10 +59,30 @@
   function renderModuleOptions(selected = []) {
     const host = $("cnModuleOptions");
     if (!host) return;
-    host.innerHTML = MODULES.map(([key, label]) =>
-      '<label class="cn-module-option"><input type="checkbox" name="cnModule" value="' + key + '"' +
-      (selected.includes(key) ? " checked" : "") + '> <span>' + label + '</span></label>'
+    host.innerHTML = MODULE_GROUPS.map(([group, items]) =>
+      '<section class="cn-module-group"><div class="cn-module-group-title">' + esc(group) +
+      '<small>' + items.length + ' options</small></div><div class="cn-module-grid">' +
+      items.map(([key,label,description]) =>
+        '<label class="cn-module-option"><input type="checkbox" name="cnModule" value="' + esc(key) + '"' +
+        (selected.includes(key) ? " checked" : "") + '><span class="cn-module-copy"><strong>' + esc(label) +
+        '</strong><small>' + esc(description) + '</small></span><span class="cn-module-check"><i class="fas fa-check"></i></span></label>'
+      ).join("") + '</div></section>'
     ).join("");
+    const count = host.querySelectorAll('input[name="cnModule"]:checked').length;
+    if ($("cnModuleCount")) $("cnModuleCount").textContent = count + " selected";
+    host.querySelectorAll('input[name="cnModule"]').forEach(input => input.addEventListener("change", () => {
+      const n = host.querySelectorAll('input[name="cnModule"]:checked').length;
+      if ($("cnModuleCount")) $("cnModuleCount").textContent = n + " selected";
+    }));
+  }
+  function readBrandColors() {
+    return ["cnInstitutionColor","cnInstitutionAccent","cnInstitutionColor3","cnInstitutionColor4","cnInstitutionColor5","cnInstitutionColor6"]
+      .map(id => $(id)?.value).filter(Boolean);
+  }
+  function applyBrandColors(colors = []) {
+    const ids = ["cnInstitutionColor","cnInstitutionAccent","cnInstitutionColor3","cnInstitutionColor4","cnInstitutionColor5","cnInstitutionColor6"];
+    const defaults = ["#082f49","#0f766e","#d4a017","#2563eb","#7c3aed","#db2777"];
+    ids.forEach((id,index) => { if ($(id)) $(id).value = colors[index] || defaults[index]; });
   }
 
   function resetForm() {
@@ -55,9 +91,11 @@
     if ($("cnInstitutionStatus")) $("cnInstitutionStatus").value = "active";
     if ($("cnInstitutionType")) $("cnInstitutionType").value = "college";
     if ($("cnInstitutionAmount")) $("cnInstitutionAmount").value = "5000";
-    if ($("cnInstitutionColor")) $("cnInstitutionColor").value = "#082f49";
-    if ($("cnInstitutionAccent")) $("cnInstitutionAccent").value = "#0f766e";
-    renderModuleOptions(["student_management","learning_management","examinations","proctoring","finance","transcripts_certificates","analytics_reports"]);
+    applyBrandColors();
+    if ($("cnInstitutionPortalMode")) $("cnInstitutionPortalMode").value = "campus_nexus";
+    if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").value = "";
+    if ($("cnInstitutionAdminPortal")) $("cnInstitutionAdminPortal").value = "";
+    renderModuleOptions(["student_management","lecturer_portal","administrator_portal","learning_management","examinations","admin_exams","proctoring","finance","transcripts_certificates","analytics_reports"]);
     $("cnInstitutionSave").textContent = "Add institution";
     $("cnInstitutionFormTitle").textContent = "Register a new institution";
     $("cnInstitutionCancel").hidden = true;
@@ -71,9 +109,13 @@
       cnInstitutionEmail:item.contact_email, cnInstitutionPhone:item.contact_phone,
       cnInstitutionWebsite:item.website_url, cnInstitutionLogo:item.logo_url,
       cnInstitutionDomain:item.portal_domain, cnInstitutionAdmin:item.admin_email, cnInstitutionColor:item.primary_color,
-      cnInstitutionAccent:item.secondary_color, cnInstitutionStatus:item.status
+      cnInstitutionAccent:item.secondary_color, cnInstitutionStatus:item.status,
+      cnInstitutionPortalMode:item.portal_mode || "campus_nexus",
+      cnInstitutionCustomLogin:item.custom_login_url,
+      cnInstitutionAdminPortal:item.administrator_portal_url
     };
     Object.entries(fields).forEach(([id,value]) => { if ($(id)) $(id).value = value || ""; });
+    applyBrandColors(item.brand_colors || [item.primary_color,item.secondary_color]);
     $("cnInstitutionAmount").value = item._subscription?.amount ?? 5000;
     $("cnInstitutionPlan").value = item._subscription?.plan_name || "Starter";
     $("cnInstitutionCycle").value = item._subscription?.billing_cycle || "monthly";
@@ -215,10 +257,17 @@
       portal_domain:$("cnInstitutionDomain").value.trim() || null,
       primary_color:$("cnInstitutionColor").value,
       secondary_color:$("cnInstitutionAccent").value,
+      brand_colors:readBrandColors(),
+      portal_mode:$("cnInstitutionPortalMode").value,
+      custom_login_url:$("cnInstitutionPortalMode").value === "custom_website" ? ($("cnInstitutionCustomLogin").value.trim() || null) : null,
+      administrator_portal_url:$("cnInstitutionAdminPortal").value.trim() || null,
       status:$("cnInstitutionStatus").value,
       onboarding_status:"configuring",
       created_by:currentUser.id
     };
+    if ($("cnInstitutionPortalMode").value === "custom_website" && !$("cnInstitutionCustomLogin").value.trim()) {
+      return notify("Enter the institution's custom login or registration URL.", "error");
+    }
     const enabledModules = [...document.querySelectorAll('input[name="cnModule"]:checked')].map(x => x.value);
     setBusy(true);
     try {
@@ -286,7 +335,7 @@
   async function init() {
     const form = $("cnInstitutionForm");
     if (!form) return;
-    renderModuleOptions(["student_management","learning_management","examinations","proctoring","finance","transcripts_certificates","analytics_reports"]);
+    renderModuleOptions(["student_management","lecturer_portal","administrator_portal","learning_management","examinations","admin_exams","proctoring","finance","transcripts_certificates","analytics_reports"]);
     $("cnInstitutionCancel").addEventListener("click",resetForm);
     $("cnInstitutionSearch").addEventListener("input",renderRows);
     $("cnInstitutionFilter").addEventListener("change",renderRows);
@@ -301,6 +350,12 @@
     $("cnInstitutionSlug").addEventListener("input",e => e.target.dataset.edited = "1");
     $("cnInstitutionCode").addEventListener("input",e => e.target.dataset.edited = "1");
     $("cnInstitutionRefresh").addEventListener("click",() => loadInstitutions().catch(e => notify(e.message,"error")));
+    $("cnInstitutionPortalMode")?.addEventListener("change", () => {
+      const custom = $("cnInstitutionPortalMode").value === "custom_website";
+      $("cnCustomLoginWrap")?.classList.toggle("is-visible", custom);
+      if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").required = custom;
+    });
+    $("cnInstitutionPortalMode")?.dispatchEvent(new Event("change"));
     try {
       await verifyPlatformAdmin();
       await loadInstitutions();
