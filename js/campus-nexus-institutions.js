@@ -266,28 +266,12 @@
 
       let adminNotice = "";
       if (adminEmail) {
-        const {data:profiles,error:profileError} = await sb.from("consolidated_user_profiles_table")
-          .select("user_id,role").ilike("email",adminEmail).not("user_id","is",null).limit(1);
-        if (profileError) throw profileError;
-        const target = profiles?.[0];
-        if (target?.user_id) {
-          const {error:promoteProfileError} = await sb.from("consolidated_user_profiles_table").update({
-            role:"admin",status:"active",institution_id:saved.id,updated_at:new Date().toISOString()
-          }).eq("user_id",target.user_id);
-          if (promoteProfileError) throw promoteProfileError;
-          const {error:removeOldAdminsError} = await sb.from("institution_users").delete().eq("institution_id",saved.id).eq("role","institution_admin").neq("user_id",target.user_id);
-          if (removeOldAdminsError) throw removeOldAdminsError;
-          const {error:membershipError} = await sb.from("institution_users").upsert({
-            institution_id:saved.id,user_id:target.user_id,role:"institution_admin",status:"active"
-          },{onConflict:"institution_id,user_id"});
-          if (membershipError) throw membershipError;
-          const {error:claimError} = await sb.from("institutions").update({
-            first_admin_user_id:target.user_id,first_admin_claimed_at:new Date().toISOString()
-          }).eq("id",saved.id).is("first_admin_user_id",null);
-          if (claimError) throw claimError;
-        } else {
-          adminNotice = " The first institution administrator is reserved for this exact email. When its owner registers through the generated school link, the account will receive institution-level administrator access.";
-        }
+        const {data:assignment,error:assignmentError} = await sb.rpc("platform_assign_institution_admin",{
+          p_institution_id:saved.id,p_email:adminEmail
+        });
+        if (assignmentError) throw assignmentError;
+        if (!assignment?.assigned) adminNotice = " " + (assignment?.message ||
+          "The email is saved. The account will receive institution administrator access after registration and sign-in.");
       }
       await writeAudit(saved.id,editingId ? "institution_updated" : "institution_created",
         {name:saved.name,short_code:saved.short_code,status:saved.status,modules:enabledModules,subscription_plan:subPayload.plan_name,admin_email:adminEmail || null});
