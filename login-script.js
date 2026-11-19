@@ -2590,7 +2590,7 @@ executeLogin: async function(identifier, password) {
                     (role === 'student' && (path === '/student.html' || path === '/student')) ||
                     ((role === 'admin' || hodRoles.includes(role)) && (path === '/admin.html' || path === '/admin')) ||
                     (role === 'lecturer' && (path === '/lecturer.html' || path === '/lecturer')) ||
-                    (role === 'superadmin' && (path === '/superadmin.html' || path === '/superadmin')),
+                    (role === 'superadmin' && (path === '/superadmin.html' || path === '/superadmin')) ||
                     (role === 'institution_admin' && (path === '/superadmin.html' || path === '/superadmin'))
                 );
                 if (isRoleDashboard || isStudentRoute) redirectFile = target.pathname + target.search + target.hash;
