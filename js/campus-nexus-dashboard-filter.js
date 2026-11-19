@@ -756,7 +756,8 @@
           "student-management":"student_management","staff-management":"human_resources",
           "messages":"administrator_portal","notification-center":"administrator_portal",
           "resources":"learning_management","reviews-newsletter":"administrator_portal",
-          "lecturer-reports-review":"analytics_reports","research-topic-vault":"academic_management"
+          "lecturer-reports-review":"analytics_reports","research-topic-vault":"academic_management",
+          "sessions":"academic_management","support-tickets":"administrator_portal"
         };
         const enabledForTenant = new Set(state.moduleMap[state.access.institutionId] || []);
         sidebar?.querySelectorAll("[data-tab]").forEach(item => {
