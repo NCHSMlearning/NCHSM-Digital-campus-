@@ -623,6 +623,79 @@
     lockScopedMetrics(metricEntries);
   }
 
+
+  function dashboardExportRows() {
+    const ids=["totalUsers","totalStudents","pendingApprovals","dashboardOpenTickets","dashboardUrgentTickets","activeSessions",
+      "totalCourses","totalResources","dashboardTotalPrograms","dashboardTotalUnits","dashboardPendingUnitReg","dashboardUpcomingExams",
+      "dashboardPendingMessages","dashboardLecturersCount","dashboardPendingMarks","dashboardPublishedMarks","dashboardPendingReviews",
+      "dashboardAttendanceToday","dashboardTotalSessions","dashboardSystemAlerts","totalStaffCount","krchnCountDisplay","tvetCountDisplay",
+      "statsTotalStudents","statsKrchnCount","statsTvetCount","statsMaleTotal","statsFemaleTotal","statsMalePercent","statsFemalePercent",
+      "activeProgramsCount","inactiveProgramsCount","totalIntakesCount","totalBlocksCount","dataIntegrityScore","systemUptime"];
+    return ids.map(id=>{
+      const el=$(id);
+      const card=el?.closest(".dashboard-card");
+      const detail=card?.querySelector(".minor-data")||[...(card?.querySelectorAll("p")||[])].find(node=>node!==el);
+      return {metric:id,value:el?.textContent?.trim()||"—",detail:detail?.textContent?.trim()||""};
+    }).filter(row=>row.value!=="—"||row.detail);
+  }
+  function dashboardDownload(blob,name) {
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  if(typeof window.exportDashboardCSV!=="function") window.exportDashboardCSV=function(){
+    const scope=$("cnDashboardScopeTitle")?.textContent||"All institutions";
+    const rows=[["Scope",scope],["Generated",new Date().toISOString()],[],["Metric","Value","Description"],
+      ...dashboardExportRows().map(row=>[row.metric,row.value,row.detail])];
+    const csv="\uFEFF"+rows.map(row=>row.map(value=>'"'+String(value??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    dashboardDownload(new Blob([csv],{type:"text/csv;charset=utf-8"}),"campus-nexus-dashboard.csv");
+  };
+  if(typeof window.exportDashboardPDF!=="function") window.exportDashboardPDF=function(){
+    const popup=window.open("","_blank");
+    if(!popup){window.alert("Please allow pop-ups to print the dashboard report.");return;}
+    const scope=$("cnDashboardScopeTitle")?.textContent||"All institutions";
+    const rows=dashboardExportRows();
+    const charts=["enrolmentBlockChart","genderDistributionChart","programBreakdownChart","performanceChart"]
+      .map(id=>$(id)).filter(Boolean).map(canvas=>({id:canvas.id,src:canvas.toDataURL("image/png")}));
+    const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    popup.document.open();
+    popup.document.write('<!doctype html><html><head><title>Campus Nexus Dashboard Report</title><style>body{font:13px Arial,sans-serif;color:#0f172a;padding:28px}h1{color:#0A3D62;margin:0 0 6px}.muted{color:#64748b;margin:0 0 20px}table{width:100%;border-collapse:collapse;margin:18px 0 26px}th,td{text-align:left;padding:8px;border-bottom:1px solid #e2e8f0}th{background:#f1f5f9}.charts{display:grid;grid-template-columns:1fr 1fr;gap:18px}.charts img{width:100%;height:230px;object-fit:contain;border:1px solid #e2e8f0}@media print{body{padding:10mm}.charts{break-inside:avoid}}</style></head><body><h1>Campus Nexus Dashboard Report</h1><p class="muted">Scope: '+esc(scope)+' · Generated: '+esc(new Date().toLocaleString("en-KE",{timeZone:"Africa/Nairobi"}))+'</p><table><thead><tr><th>Metric</th><th>Value</th><th>Description</th></tr></thead><tbody>'+rows.map(row=>'<tr><td>'+esc(row.metric)+'</td><td>'+esc(row.value)+'</td><td>'+esc(row.detail)+'</td></tr>').join("")+'</tbody></table><h2>Dashboard charts</h2><div class="charts">'+charts.map(chart=>'<div><h3>'+esc(chart.id)+'</h3><img src="'+chart.src+'"></div>').join("")+'</div></body></html>');
+    popup.document.close();popup.focus();setTimeout(()=>popup.print(),350);
+  };
+  if(typeof window.exportDashboardPNG!=="function") window.exportDashboardPNG=function(){
+    const rows=dashboardExportRows();
+    const canvas=document.createElement("canvas");
+    canvas.width=1800;canvas.height=1500;
+    const ctx=canvas.getContext("2d");
+    if(!ctx){window.alert("PNG export is not available in this browser.");return;}
+    ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#0A3D62";ctx.font="bold 42px Arial";ctx.fillText("Campus Nexus Dashboard",70,75);
+    ctx.fillStyle="#64748b";ctx.font="22px Arial";ctx.fillText("Scope: "+($("cnDashboardScopeTitle")?.textContent||"All institutions"),70,115);
+    ctx.fillText("Generated: "+new Date().toLocaleString("en-KE",{timeZone:"Africa/Nairobi"}),70,150);
+    const cardRows=rows.slice(0,24),cols=4,cellW=410,cellH=100,startY=190;
+    cardRows.forEach((row,i)=>{
+      const x=70+(i%cols)*430,y=startY+Math.floor(i/cols)*cellH;
+      ctx.fillStyle="#f1f5f9";ctx.fillRect(x,y,390,82);
+      ctx.fillStyle="#64748b";ctx.font="16px Arial";ctx.fillText(row.metric.replace(/([A-Z])/g," $1").slice(0,34),x+14,y+25);
+      ctx.fillStyle="#0A3D62";ctx.font="bold 27px Arial";ctx.fillText(row.value.slice(0,22),x+14,y+60);
+    });
+    const chartY=startY+Math.ceil(cardRows.length/cols)*cellH+20;
+    const charts=["enrolmentBlockChart","genderDistributionChart","programBreakdownChart","performanceChart"].map(id=>$(id)).filter(Boolean);
+    let pending=charts.length;
+    const finish=()=>{if(--pending>0)return;canvas.toBlob(blob=>{if(blob)dashboardDownload(blob,"campus-nexus-dashboard.png");},"image/png");};
+    if(!pending){canvas.toBlob(blob=>{if(blob)dashboardDownload(blob,"campus-nexus-dashboard.png");},"image/png");return;}
+    charts.forEach((source,i)=>{
+      const image=new Image();
+      image.onload=()=>{
+        const x=70+(i%2)*850,y=chartY+Math.floor(i/2)*300;
+        ctx.fillStyle="#0A3D62";ctx.font="bold 18px Arial";ctx.fillText(source.id,x,y+18);
+        ctx.drawImage(image,x,y+30,800,240);finish();
+      };
+      image.onerror=finish;
+      image.src=source.toDataURL("image/png");
+    });
+  };
+
   async function refresh() {
     if(state.busy) { state.refreshQueued=true; return; }
     state.busy=true;
