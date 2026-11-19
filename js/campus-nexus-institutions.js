@@ -265,6 +265,11 @@
     const adminEmail = $("cnInstitutionAdmin").value.trim().toLowerCase();
     const amount = Number($("cnInstitutionAmount").value);
     if (!Number.isFinite(amount) || amount < 0) return notify("Enter a valid subscription amount.", "error");
+    const portalMode = $("cnInstitutionPortalMode")?.value || "campus_nexus";
+    const customLoginUrl = $("cnInstitutionCustomLogin")?.value.trim() || "";
+    if (portalMode === "custom_website" && (!/^https:\/\//i.test(customLoginUrl) || !/^https:\/\//i.test(customLoginUrl))) {
+      return notify("Enter a valid HTTPS login URL for the institution's own portal.", "error");
+    }
     const payload = {
       name, short_code:code, slug, institution_type:$("cnInstitutionType").value,
       country:$("cnInstitutionCountry").value.trim() || "Kenya",
@@ -284,14 +289,6 @@
       onboarding_status:"configuring",
       created_by:currentUser.id
     };
-    if ($("cnInstitutionPortalMode").value === "custom_website" && !$("cnInstitutionCustomLogin").value.trim()) {
-      return notify("Enter the institution's custom login or registration URL.", "error");
-    }
-    const portalMode = $("cnInstitutionPortalMode")?.value || "campus_nexus";
-    const customLoginUrl = $("cnInstitutionCustomLogin")?.value.trim() || "";
-    if (portalMode === "custom_website" && (!/^https:\/\//i.test(customLoginUrl) || !/^https:\/\//i.test(customLoginUrl))) {
-      return notify("Enter a valid HTTPS login URL for the institution's own portal.", "error");
-    }
     const enabledModules = [...document.querySelectorAll('input[name="cnModule"]:checked')].map(x => x.value);
     setBusy(true);
     try {
