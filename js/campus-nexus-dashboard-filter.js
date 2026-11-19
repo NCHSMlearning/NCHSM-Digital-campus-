@@ -747,7 +747,7 @@
         // Enforce the institution's subscribed modules in the administrator UI.
         // This is a presentation guard only; Supabase RLS/RPC policies remain the security boundary.
         const moduleForTab = {
-          "users":"student_management","pending":"admissions","registration-approvals":"admissions","enroll":"admissions",
+          "users":"student_management","pending":"admissions","enroll":"admissions",
           "units":"academic_management","unit-management":"academic_management","programs":"academic_management",
           "cats":"admin_exams","marks-entry":"examinations","marks-approval":"examinations",
           "entry-control":"examinations","publish-marks":"examinations","nursing-system":"academic_management",
