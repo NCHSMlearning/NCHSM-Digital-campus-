@@ -1001,7 +1001,15 @@ main.main>header{width:100%;max-width:100%;min-width:0}
                                 <span>Admin Approvals</span>
                             </a>
                         </li>
-                    </ul>
+                    
+                        <li>
+                            <a href="#" data-tab="registration-approvals" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.8)'">
+                                <i class="fas fa-user-check" style="width:18px;text-align:center;font-size:12px;"></i>
+                                <span>Registration Approvals</span>
+                                <span id="cnRegistrationApprovalBadge" style="display:none;margin-left:auto;background:#f59e0b;color:#111827;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:700;">0</span>
+                            </a>
+                        </li>
+</ul>
                 </li>
 
                 <!-- ======================================== -->
@@ -12436,7 +12444,50 @@ main.main>header{width:100%;max-width:100%;min-width:0}
 </section>
 
                                 <!-- ============================================ -->
-            <!-- REVIEWS & NEWSLETTER SECTION -->
+            
+<!-- Campus Nexus: institution-scoped student and lecturer registration approvals -->
+<section id="registration-approvals" class="tab-content">
+  <div style="background:linear-gradient(135deg,#0f766e,#0b4f62);border-radius:16px;padding:24px 26px;margin-bottom:22px;color:white;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div><div style="font-size:11px;letter-spacing:1.2px;font-weight:700;opacity:.8;text-transform:uppercase;">Institution administration</div>
+      <h2 style="margin:5px 0;font-size:24px;"><i class="fas fa-user-check"></i> Registration Approvals</h2>
+      <p style="margin:0;color:rgba(255,255,255,.85);font-size:14px;">Review student and lecturer applications submitted using your institution's school code.</p>
+    </div>
+    <button id="cnRegistrationApprovalRefresh" type="button" style="border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.14);color:white;padding:10px 16px;border-radius:9px;font-weight:700;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh queue</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px;">
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:17px;"><small style="color:#64748b;font-weight:700;text-transform:uppercase;">Pending applications</small><div id="cnRegistrationPendingCount" style="font-size:30px;font-weight:800;color:#d97706;">0</div></div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:17px;"><small style="color:#64748b;font-weight:700;text-transform:uppercase;">Students</small><div id="cnRegistrationStudentCount" style="font-size:30px;font-weight:800;color:#0f766e;">0</div></div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:17px;"><small style="color:#64748b;font-weight:700;text-transform:uppercase;">Lecturers</small><div id="cnRegistrationLecturerCount" style="font-size:30px;font-weight:800;color:#2563eb;">0</div></div>
+  </div>
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    <input id="cnRegistrationApprovalSearch" type="search" placeholder="Search name, email, programme or ID…" style="flex:1;min-width:220px;padding:11px 13px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;">
+    <select id="cnRegistrationApprovalRole" style="padding:11px 13px;border:1px solid #cbd5e1;border-radius:8px;background:white;font:inherit;"><option value="all">All applicants</option><option value="student">Students</option><option value="lecturer">Lecturers</option></select>
+  </div>
+  <div id="cnRegistrationApprovalMessage" role="status" aria-live="polite" style="margin:0 0 12px;color:#475569;font-size:13px;"></div>
+  <style>
+    #registration-approvals .cn-ra-role{display:inline-flex;padding:4px 9px;border-radius:20px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:700}
+    #registration-approvals .cn-ra-actions{display:flex;gap:7px;flex-wrap:wrap}
+    #registration-approvals .cn-ra-actions button{border:0;border-radius:7px;padding:8px 11px;font-size:12px;font-weight:700;cursor:pointer}
+    #registration-approvals .cn-ra-approve{background:#dcfce7;color:#166534}
+    #registration-approvals .cn-ra-reject{background:#fee2e2;color:#991b1b}
+    #registration-approvals button:disabled{opacity:.55;cursor:wait}
+    #registration-approvals table{width:100%;min-width:760px;border-collapse:collapse;font-size:13px}
+    #registration-approvals th,#registration-approvals td{padding:13px 14px;text-align:left;border-bottom:1px solid #e2e8f0;vertical-align:middle}
+    #registration-approvals th{background:#f8fafc;color:#475569;white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+    #registration-approvals .is-error{color:#b91c1c}
+  </style>
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <table>
+        <thead><tr><th>Applicant</th><th>Account type</th><th>Programme</th><th>Submitted</th><th>Decision</th></tr></thead>
+        <tbody id="cnRegistrationApprovalRows"><tr><td colspan="5" style="padding:32px;text-align:center;color:#64748b;">Loading applications…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <p style="color:#64748b;font-size:12px;margin-top:12px;">Only pending applications assigned to your institution are shown. Approval activates the account; rejection keeps access disabled. Decisions are recorded in the platform audit log.</p>
+</section>
+
+<!-- REVIEWS & NEWSLETTER SECTION -->
             <!-- ============================================ -->
             <section id="reviews-newsletter" class="tab-content">
                 <h2><i class="fas fa-star"></i> Student Reviews & Newsletter</h2>
@@ -14838,6 +14889,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 <script type="module" src="script.js?v=20261118-tenant-scope-v1" defer></script>
 <script type="module" src="js/campus-nexus-institutions.js?v=20261119-institution-onboarding-v4"></script>
 <script type="module" src="js/campus-nexus-dashboard-filter.js?v=20261119-institution-admin-v3"></script>
+<script type="module" src="js/campus-nexus-registration-approvals.js?v=20261119-registration-approvals-v1"></script>
 <!-- ============================================ -->
  <!-- ============================================ -->
 <!-- SUPER ADMIN PROFILE MODULE                   -->
