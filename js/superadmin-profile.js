@@ -179,7 +179,11 @@ function updateProfileUI() {
         profileEmployeeId: profileData.employeeId || 'Not set',
         profileDepartment: profileData.department || 'Not set',
         profileLocation: profileData.location || 'Not set',
-        profileStatRole: 'Super Admin',
+        profileStatRole: ({
+            superadmin: 'Platform Super Admin',
+            super_admin: 'Platform Super Admin',
+            institution_admin: 'Institution Administrator'
+        }[String(profileData.role || '').toLowerCase()] || String(profileData.role || 'Administrator').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())),
         profileStatMemberSince: profileData.memberSince || '2024',
         profileLastLogin: profileData.lastLogin || 'Just now'
     };
