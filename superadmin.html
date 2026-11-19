@@ -14086,6 +14086,32 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 #institutions .cn-alert{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px 14px;border-radius:10px;font-size:12px;margin-bottom:14px}
 @media(max-width:760px){#institutions .cn-stats{grid-template-columns:1fr 1fr}#institutions .cn-grid{grid-template-columns:1fr}#institutions .cn-span{grid-column:auto}#institutions .cn-modules{grid-template-columns:1fr 1fr}#institutions .cn-panel{padding:15px}#institutions .cn-head{padding:18px}#institutions .cn-head h2{font-size:18px}#institutions .cn-head-actions{width:100%}#institutions .cn-head-actions button{flex:1}#institutions .cn-panel-head{display:block}}
 @media(max-width:420px){#institutions .cn-stats{gap:8px}#institutions .cn-stat{padding:12px}#institutions .cn-stat strong{font-size:22px}#institutions .cn-modules{grid-template-columns:1fr}#institutions .cn-table-toolbar>*{width:100%;box-sizing:border-box}}
+
+#institutions .cn-palette{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;padding:16px;border:1px solid #dbe4ef;border-radius:14px;background:linear-gradient(135deg,#f8fafc,#fff)}
+#institutions .cn-palette label{display:flex;align-items:center;gap:8px;min-width:0;flex-direction:column;font-size:11px;font-weight:700;color:#475569}
+#institutions .cn-palette input[type=color]{width:100%;height:46px;border:1px solid #d5deea;border-radius:10px;padding:4px;background:#fff;cursor:pointer}
+#institutions .cn-help{display:block;margin-top:6px;color:#64748b;font-size:11px;line-height:1.45}
+#institutions .cn-help-inline{font-weight:500;color:#64748b;text-transform:none}
+#institutions #cnCustomLoginWrap{display:none}
+#institutions #cnCustomLoginWrap.is-visible{display:block}
+#institutions .cn-modules-field{padding:18px;border:1px solid #dbe4ef;border-radius:16px;background:#f8fafc}
+#institutions .cn-modules-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}
+#institutions .cn-modules-heading label{font-size:15px;font-weight:800;color:#0f172a}
+#institutions .cn-modules-heading p{margin:5px 0 0;color:#64748b;font-size:12px;line-height:1.5}
+#institutions .cn-module-count{white-space:nowrap;border-radius:99px;padding:7px 11px;background:#e0f2fe;color:#075985;font-size:11px;font-weight:800}
+#institutions .cn-module-group{margin-top:16px}
+#institutions .cn-module-group-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;color:#334155;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+#institutions .cn-module-group-title small{color:#94a3b8;font-size:10px;text-transform:none;letter-spacing:0}
+#institutions .cn-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#institutions .cn-module-option{position:relative;display:flex;align-items:center;gap:11px;min-height:76px;padding:13px;border:1px solid #dbe4ef;border-radius:12px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s}
+#institutions .cn-module-option:has(input:checked){border-color:#0f766e;background:#f0fdfa;box-shadow:0 0 0 2px rgba(15,118,110,.08)}
+#institutions .cn-module-option input{width:18px;height:18px;flex:0 0 18px;accent-color:#0f766e}
+#institutions .cn-module-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+#institutions .cn-module-copy strong{color:#1e293b;font-size:12px}
+#institutions .cn-module-copy small{color:#64748b;font-size:10px;line-height:1.4}
+#institutions .cn-module-check{margin-left:auto;opacity:0;color:#0f766e}
+#institutions .cn-module-option:has(input:checked) .cn-module-check{opacity:1}
+@media(max-width:760px){#institutions .cn-palette{grid-template-columns:repeat(3,minmax(0,1fr))}#institutions .cn-module-grid{grid-template-columns:1fr}#institutions .cn-modules-heading{display:block}#institutions .cn-module-count{display:inline-block;margin-top:10px}}
 </style>
 
 <div class="cn-head">
@@ -14122,17 +14148,30 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
       <div class="cn-field"><label for="cnInstitutionEmail">Official contact email</label><input id="cnInstitutionEmail" type="email" placeholder="admin@institution.ac.ke"></div>
       <div class="cn-field"><label for="cnInstitutionPhone">Contact phone</label><input id="cnInstitutionPhone" type="tel" placeholder="+254…"></div>
       <div class="cn-field"><label for="cnInstitutionWebsite">Website URL</label><input id="cnInstitutionWebsite" type="url" placeholder="https://institution.ac.ke"></div>
-      <div class="cn-field"><label for="cnInstitutionLogo">Logo image URL</label><input id="cnInstitutionLogo" type="url" placeholder="https://… (logo hosted image URL)"></div>
-      <div class="cn-field"><label for="cnInstitutionDomain">Portal domain / subdomain</label><input id="cnInstitutionDomain" placeholder="e.g. nchsm.campusnexus.co.ke"></div>
-      <div class="cn-step-title cn-span"><span class="cn-step-number">2</span> Portal identity & branding</div>
-      <div class="cn-field cn-span"><label>Institution brand colours</label><div class="cn-colors"><span style="font-size:11px;color:#64748b">Primary</span><input id="cnInstitutionColor" type="color" value="#082f49"><span style="font-size:11px;color:#64748b">Accent</span><input id="cnInstitutionAccent" type="color" value="#0f766e"></div></div>
-      <div class="cn-step-title cn-span"><span class="cn-step-number">3</span> Access, subscription & services</div>
+      <div class="cn-field"><label for="cnInstitutionLogo">Institutional logo URL</label><input id="cnInstitutionLogo" type="url" placeholder="https://…/institution-logo.png"><small class="cn-help">Use a public HTTPS image URL. A dedicated logo upload workflow can be connected to storage separately.</small></div>
+      <div class="cn-field"><label for="cnInstitutionDomain">Institution website / domain</label><input id="cnInstitutionDomain" placeholder="e.g. institution.ac.ke or portal.campusnexus.co.ke"></div>
+      <div class="cn-step-title cn-span"><span class="cn-step-number">2</span> Institutional branding</div>
+      <div class="cn-field cn-span"><label>Brand colour palette <span class="cn-help-inline">Choose up to six colours</span></label>
+        <div class="cn-palette">
+          <label><span>Primary</span><input id="cnInstitutionColor" type="color" value="#082f49"></label>
+          <label><span>Secondary</span><input id="cnInstitutionAccent" type="color" value="#0f766e"></label>
+          <label><span>Accent 3</span><input id="cnInstitutionColor3" type="color" value="#d4a017"></label>
+          <label><span>Accent 4</span><input id="cnInstitutionColor4" type="color" value="#2563eb"></label>
+          <label><span>Accent 5</span><input id="cnInstitutionColor5" type="color" value="#7c3aed"></label>
+          <label><span>Accent 6</span><input id="cnInstitutionColor6" type="color" value="#db2777"></label>
+        </div>
+      </div>
+      <div class="cn-step-title cn-span"><span class="cn-step-number">3</span> Login, registration & administrator portal</div>
+      <div class="cn-field"><label for="cnInstitutionPortalMode">Student and staff sign-in method</label><select id="cnInstitutionPortalMode"><option value="campus_nexus">Use Campus Nexus login & registration</option><option value="custom_website">Use institution's own website/login</option></select><small class="cn-help">Choose whether users enter through the shared Campus Nexus portal or the institution's own login page.</small></div>
+      <div class="cn-field" id="cnCustomLoginWrap"><label for="cnInstitutionCustomLogin">Custom login / registration URL</label><input id="cnInstitutionCustomLogin" type="url" placeholder="https://institution.ac.ke/login"><small class="cn-help">Required when using a custom institutional website.</small></div>
+      <div class="cn-field"><label for="cnInstitutionAdminPortal">Administrator portal URL</label><input id="cnInstitutionAdminPortal" type="url" placeholder="https://institution.ac.ke/admin or leave blank for Campus Nexus"><small class="cn-help">Set a dedicated administrator entry point, or leave blank to use the institution-scoped Campus Nexus admin portal.</small></div>
+      <div class="cn-step-title cn-span"><span class="cn-step-number">4</span> Access, subscription & services</div>
       <div class="cn-field"><label for="cnInstitutionStatus">Institution status</label><select id="cnInstitutionStatus"><option value="active">Active</option><option value="pending">Pending setup</option><option value="suspended">Suspended</option></select></div>
       <div class="cn-field"><label for="cnInstitutionAdmin">Institution administrator email (existing portal account)</label><input id="cnInstitutionAdmin" type="email" placeholder="admin@institution.ac.ke"></div>
       <div class="cn-field"><label for="cnInstitutionPlan">Subscription package</label><select id="cnInstitutionPlan"><option>Starter</option><option>Growth</option><option>Professional</option><option>Enterprise</option><option>Legacy Institution</option><option>Custom</option></select></div>
       <div class="cn-field"><label for="cnInstitutionAmount">Subscription amount (KES)</label><input id="cnInstitutionAmount" type="number" min="0" step="100" value="5000" required></div>
       <div class="cn-field"><label for="cnInstitutionCycle">Billing cycle</label><select id="cnInstitutionCycle"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annually">Annually</option><option value="custom">Custom</option></select></div>
-      <div class="cn-field cn-span"><label>Enabled platform modules</label><div id="cnModuleOptions" class="cn-modules"></div></div>
+      <div class="cn-field cn-span cn-modules-field"><div class="cn-modules-heading"><div><label>Institution modules & user access</label><p>Enable the services this institution has subscribed to. Portal access is separated by student, lecturer and administrator roles.</p></div><span class="cn-module-count" id="cnModuleCount">0 selected</span></div><div id="cnModuleOptions" class="cn-modules"></div></div>
     </div>
     <div class="cn-form-footer">
       <span class="cn-form-note"><i class="fas fa-lock"></i> Changes are saved securely to the Campus Nexus database.</span>
@@ -14797,7 +14836,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 <!-- MAIN APPLICATION - ES MODULE                  -->
 <!-- ============================================ -->
 <script type="module" src="script.js?v=20261118-tenant-scope-v1" defer></script>
-<script type="module" src="js/campus-nexus-institutions.js?v=20261119-admin-roles-v3"></script>
+<script type="module" src="js/campus-nexus-institutions.js?v=20261119-institution-onboarding-v4"></script>
 <script type="module" src="js/campus-nexus-dashboard-filter.js?v=20261119-institution-admin-v3"></script>
 <!-- ============================================ -->
  <!-- ============================================ -->
