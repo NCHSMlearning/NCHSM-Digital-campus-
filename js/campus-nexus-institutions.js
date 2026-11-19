@@ -120,6 +120,7 @@
     $("cnInstitutionPlan").value = item._subscription?.plan_name || "Starter";
     $("cnInstitutionCycle").value = item._subscription?.billing_cycle || "monthly";
     $("cnInstitutionAdmin").value = item.admin_email || "";
+    $("cnInstitutionPortalMode")?.dispatchEvent(new Event("change"));
     renderModuleOptions(item._modules || []);
     $("cnInstitutionSave").textContent = "Update institution";
     $("cnInstitutionFormTitle").textContent = "Edit institution";
@@ -216,9 +217,11 @@
       const member = memberships.find(x => x.institution_id === i.id && x.status === "active");
       const registration = registrationLinks.find(x => x.institution_id === i.id);
       const host = String(i.portal_domain || "").trim().replace(/^https?:\/\//i,"").replace(/\/$/,"");
-      const registrationUrl = host
-        ? "https://" + host + "/register"
-        : registration ? window.location.origin + "/registration.html?institution_code=" + encodeURIComponent(registration.code) : "";
+      const registrationUrl = i.portal_mode === "custom_website" && i.custom_login_url
+        ? i.custom_login_url
+        : host
+          ? "https://" + host + "/register"
+          : registration ? window.location.origin + "/registration.html?institution_code=" + encodeURIComponent(registration.code) : "";
       return {...i, _modules:modules.filter(x => x.institution_id === i.id && x.enabled).map(x => x.module_key),
         _subscription:sub || null, _subscriptionId:sub?.id || null, _adminUserId:member?.user_id || null,
         _registrationUrl:registrationUrl, _registrationCode:registration?.code || null};
