@@ -253,8 +253,9 @@
       const sub = subscriptions.find(x => x.institution_id === i.id);
       const member = memberships.find(x => x.institution_id === i.id && x.status === "active");
       const registration = registrationLinks.find(x => x.institution_id === i.id);
-      const sharedLoginUrl = "https://campusnexus.co.ke/login";
-      const sharedRegistrationUrl = "https://campusnexus.co.ke/register?school_code=" + encodeURIComponent(String(i.school_code || ""));
+      const schoolCode = String(i.school_code || "");
+      const sharedLoginUrl = "https://campusnexus.co.ke/login" + (schoolCode ? "?school_code=" + encodeURIComponent(schoolCode) : "");
+      const sharedRegistrationUrl = "https://campusnexus.co.ke/register?school_code=" + encodeURIComponent(schoolCode);
       const isCustomPortal = i.portal_mode === "custom_website" && Boolean(i.custom_login_url);
       const loginUrl = isCustomPortal ? i.custom_login_url : sharedLoginUrl;
       const hasSchoolCode = /^[0-9]{3}$/.test(String(i.school_code || ""));
