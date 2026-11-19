@@ -26,43 +26,22 @@ let markEntrySettings = {
 let markEntryLogs = [];
 
 // ===== GOOGLE SHEETS AUTHENTICATION =====
-const credentials = {
-    type: "service_account",
-    project_id: "nursing-marks-system",
-    private_key_id: "1ed05cb70c346df5c3bb79e06bb1bffbd26f17b2",
-    private_key: `-----BEGIN PRIVATE KEY-----
-MIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQDJCTumvxURgqLM
-KJFDb+tk82Hh3ePi5Sl6vtov4ZVOWegwZZ6u9CWVErxFVGdbMOkg+EVhyx3aD+dS
-ZV+ZFmT2dTOu1CLjB+bTr1sPPZ1uFlWPd7bXMfDFhBdOpWVF15Ph+K6mHWjNX/TW
-DVEiwMd7x1wk+S0uEsgoXCc5fIb9SkTKUy+7ZpRCq3igyDvS/y33wpPlSNJH0wjg
-BWan+9obXHdMaDUWvqnUMqYHt2KeQcrBkLXXBdDDIY3gm/kSrLrJTTpPTgQYXmcL
-ujDh3Zx3t6HAncs4vdftGVClgamtsL9k0X5i6PS4RkkvHkJ0uOo6+BBudo780sGX
-i7+YwBBZAgMBAAECgf94125PJ1/dCItptIBvzLiFIzCF/cvu03bQM3Ag33hnoHZL
-sDM56ABzBLHqoFkl/xNQgewFkV3Jth/s0MaH86La3QHZutd53M2YFqLiDesqX2+l
-ZBRHoMxk/ONgCIPmpL4Dj3g+vEGsXxCux1J2glvA/I116FH0yVVpR6EfKULsKhAF
-sSvZqnBFNkoe4cbD4nvy7Y2LQ3JXNaWBuP6xy78AHu4jVTSzrS6tLd9zBqtWOikr
-6BSXpCa5ITr/JZA9l5D18HXUhDI0YurSemDrygQvHIGPcPscBjUpNZh4ccESaj6p
-kTRe3U+Cbw//yKIr1pm3PxtA3La4kbKms2WMqWECgYEA+IwyfXMBCjES60TwuS37
-/b2zf5vFUGVhO8OFOmSzfFPzNirFGD83/zERqIGfjs09NTnvB4FVcdwtFHBNC4GX
-/wXudmb+Etp0ljKOlXGrJJQaRovc6CRdluddsjMTXMRTMh/cLviO5ZduH/FaDxfJ
-lL0iI0Oeb6+CnKZtALyT8z8CgYEAzxBYpMG4PUHuty2pGb1CFqsvBvnePRAhL7x5
-RWdZcZd8Wrs66FTiQoPMs0eIj0xlIFDp+Kki/8ONNkrivgw5ESfQREqBBiiW6//z
-MyQszHv3BYnIZw5l5Dy4mU3D2N9MSn+YXpbcWduX/gzMiuyXJqx5vru6bYAF23l1
-wr/kTmcCgYAl04BjozsHSAyvDaDtLdhp95L32scewy8XH1yJVIYUZ9pd5gh09joZ
-dmhPktqrqwSjsxtzsvVEDNQ3hhfTpndxcn+mOWp1iBWyPiOBDvmS6Y9OKT8HfXFY
-5AFYe3l45tAaksq5w05MFs3Fwr+ICIC/SEGHyGS2bqmcGaABOrHxlQKBgQCGTCnS
-IjrmsD6t3BWTNicJINoNgj5cCHwdw/Y7x35BqGjlSA465eMiFO3NUZYGqxvjy9cU
-ik7C6AhMsGFDthXFRLdVs6TfY7APPSB1iP7tWXGry+OIw9PeJmvsMn3VyW5n2z3u
-C5a7SSvZgF+hszWNxcvoo0WVA7XI1YxFVcQz/QKBgDAsGt05pNt+9JFluUZaftLi
-iPfNv42aRnCdCn7YpnW8SkSTcyD0y+0hSCisQZ2NBgAkw4Y1uIYV+ayC4WxXWqmJ
-yuRhbjbdQnNygiTKqxi2Q/xLoQR3eG9zs4mCPwBkwzfEa7QateVKqB8SOhKr/TlZ
-eET3hIw//KEIOlTU2QI/
------END PRIVATE KEY-----`,
-    client_email: "nursing-marks-bot@nursing-marks-system.iam.gserviceaccount.com",
-    client_id: "116238387173068992581",
-    auth_uri: "https://accounts.google.com/o/oauth2/auth",
-    token_uri: "https://oauth2.googleapis.com/token"
-};
+// Credentials are supplied only through the hosting provider's secret store.
+// GOOGLE_SERVICE_ACCOUNT_JSON must contain the complete service-account JSON.
+// The previously embedded private key has been exposed and must be revoked.
+const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+if (!credentialsJson) {
+    throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_JSON environment variable. Configure it in the hosting provider secret store.');
+}
+let credentials;
+try {
+    credentials = JSON.parse(credentialsJson);
+} catch (error) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON.');
+}
+if (credentials.type !== 'service_account' || !credentials.client_email || !credentials.private_key) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is missing required service-account fields.');
+}
 
 const auth = new google.auth.GoogleAuth({
     credentials: credentials,
