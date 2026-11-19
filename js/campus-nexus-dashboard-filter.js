@@ -62,7 +62,7 @@
   }
 
   function rememberLegacyMetrics() {
-    const ids = ["totalUsers","pendingApprovals","totalStudents","dashboardOpenTickets",
+    const ids = ["dashboardOpenTickets",
       "totalDailyCheckIns","overallCheckInCount","dashboardUrgentTickets","activeSessions",
       "totalCourses","totalResources","dashboardTotalPrograms"];
     state.snapshot = {};
@@ -308,6 +308,18 @@
       : "Consolidated platform view. Existing academic metrics remain legacy NCHSM data until tenant migration is complete.";
   }
 
+  async function loadGlobalIdentityMetrics(client) {
+    const [total,students,pending] = await Promise.all([
+      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}),
+      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("role","student"),
+      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("status","pending")
+    ]);
+    [total,students,pending].forEach(result=>{if(result.error) throw result.error;});
+    setMetric("totalUsers",fmt(total.count||0),"All platform user profiles");
+    setMetric("totalStudents",fmt(students.count||0),"All platform student profiles");
+    setMetric("pendingApprovals",fmt(pending.count||0),"Pending platform profile approvals");
+  }
+
   async function applyInstitutionScope(client,institution,platform) {
     const id=institution.id;
     // Profiles are the authoritative tenant-owned roster. This includes legacy
@@ -403,7 +415,7 @@
       updateScopeText(institution||null);
       publishScope();
       if(institution) await applyInstitutionScope(client,institution,platform);
-      else restoreLegacyMetrics();
+      else { restoreLegacyMetrics(); await loadGlobalIdentityMetrics(client); }
       if(updated) updated.textContent="Updated "+new Intl.DateTimeFormat("en-KE",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Nairobi"}).format(new Date());
     }catch(error){
       console.error("[Campus Nexus dashboard filter]",error);
