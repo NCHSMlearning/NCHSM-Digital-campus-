@@ -477,7 +477,8 @@
       .eq("is_read",false).in("severity",["high","critical","HIGH","CRITICAL"]),id));
     add("activity",scopeQuery(client.from("audit_logs").select("created_at,actor_name,user_email,role,user_role,action_type,module,description,status,ip_address,device_info")
       .order("created_at",{ascending:false}).limit(500),id));
-    if(userIds.length) add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("is_active",true));
+    if(id && userIds.length) add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("is_active",true));
+    else if(!id) add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).eq("is_active",true));
     const results={};
     const settled=await Promise.all(jobs.map(async ([key,promise])=>[key,await promise]));
     for(const [key,result] of settled){
