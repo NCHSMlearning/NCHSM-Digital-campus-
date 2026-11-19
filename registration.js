@@ -258,7 +258,8 @@ function renderInstitutionContextBanner(context, form) {
 async function initializeInstitutionRegistration() {
     const form = document.getElementById('register-form');
     if (!form || !form.parentNode) return;
-    form.hidden = true;
+    const originalFormDisplay = form.style.display;
+    form.style.display = 'none';
 
     const gate = document.createElement('section');
     gate.id = 'cn-school-code-gate';
@@ -293,6 +294,7 @@ async function initializeInstitutionRegistration() {
         updateRegistrationSchoolCodeUrl(context.school_code);
         gate.remove();
         form.hidden = false;
+        form.style.display = originalFormDisplay || '';
     };
 
     const resolve = async (code, host) => {
