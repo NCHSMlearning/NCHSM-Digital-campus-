@@ -95,11 +95,11 @@
       const valueEl = $(id);
       if (!valueEl) return;
       const card = valueEl.closest(".dashboard-card");
-      const detailEl = card?.querySelector(".minor-data");
+      const detailEl = card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node => node !== valueEl);
       const apply = () => {
         if (valueEl.textContent !== String(entry.value)) valueEl.textContent = String(entry.value);
         if (detailEl && entry.detail && detailEl.textContent !== entry.detail) detailEl.textContent = entry.detail;
-        card?.classList.remove("cn-scope-unavailable");
+        card?.classList.toggle("cn-scope-unavailable",!!entry.unavailable);
       };
       apply();
       targets.push({ valueEl, detailEl, apply });
@@ -125,7 +125,7 @@
     if (!el) return;
     el.textContent = "—";
     const card = el.closest(".dashboard-card");
-    const sub = card?.querySelector(".minor-data");
+    const sub = card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node => node !== el);
     if (sub) sub.textContent = reason || "Not yet linked to an institution";
     card?.classList.add("cn-scope-unavailable");
   }
@@ -398,7 +398,7 @@
 
     // These legacy tables do not yet have a trustworthy institution_id. Never
     // display their NCHSM/global totals while a tenant is selected.
-    [
+    const unavailableMetrics = [
       ["dashboardTotalPrograms","Program records are not institution-linked"],
       ["dashboardTotalUnits","Unit catalogue is not institution-linked"],
       ["dashboardUpcomingExams","Exam records are not institution-linked"],
@@ -418,7 +418,8 @@
       ["totalIntakesCount","Intake records are not institution-linked"],
       ["totalBlocksCount","Block records are not institution-linked"],
       ["dataIntegrityScore","A tenant-specific integrity calculation is not available"]
-    ].forEach(([metric,reason])=>markUnavailable(metric,reason));
+    ];
+    unavailableMetrics.forEach(([metric,reason])=>markUnavailable(metric,reason));
 
     // System uptime is platform-wide, not tenant-owned; label it honestly.
     const uptime=$("systemUptime");
@@ -436,7 +437,8 @@
 
     // Guard every tenant-backed value against older dashboard loaders that may
     // finish later and overwrite the filtered values with legacy global totals.
-    lockScopedMetrics(metricEntries);
+    const lockedEntries=Object.assign({},metricEntries,Object.fromEntries(unavailableMetrics.map(([metric,detail])=>[metric,{value:"—",detail,unavailable:true}])));
+    lockScopedMetrics(lockedEntries);
   }
 
   async function refresh() {
