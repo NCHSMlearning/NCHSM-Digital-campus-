@@ -35,8 +35,8 @@ RewriteRule ^(.*)/$ /$1 [L,R=301]
 # CANONICAL CLEAN URLS: redirect direct .html requests to extensionless URLs.
 # This is applied before individual portal aliases.
 # ------------------------------------------------------------------
-RewriteCond %{THE_REQUEST} \\s/+(.+?)\\.html(?:[\\s?]) [NC]
-RewriteRule ^(.+)\\.html$ /$1 [R=301,L,NE]
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.html(?:[\s?]) [NC]
+RewriteRule ^(.+)\.html$ /$1 [R=301,L,NE]
 
 # ------------------------------------------------------------------
 # 🔥 FIX: ALLOW LOGIN PAGES DIRECT ACCESS
