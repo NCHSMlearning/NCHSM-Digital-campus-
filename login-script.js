@@ -697,6 +697,24 @@ window.NCHSMLogin = {
             };
 
             // Save the local session FIRST so dashboard access is not held up by telemetry.
+            // Claim an institution administrator invitation only when the signed-in email
+            // exactly matches an institution's reserved admin email. The database RPC
+            // validates the claim and assigns the institution membership securely.
+            try {
+                if (this.supabase?.rpc) {
+                    const { data: adminClaim, error: adminClaimError } =
+                        await this.supabase.rpc('claim_institution_admin_for_current_user');
+                    if (!adminClaimError && adminClaim?.assigned) {
+                        safeProfile.role = 'institution_admin';
+                        safeProfile.institution_id = adminClaim.institution_id;
+                        profileData.role = 'institution_admin';
+                        profileData.institution_id = adminClaim.institution_id;
+                    }
+                }
+            } catch (adminClaimError) {
+                console.warn('Institution administrator claim deferred:', adminClaimError?.message || adminClaimError);
+            }
+
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             if (safeProfile.user_id) localStorage.setItem('currentUserId', safeProfile.user_id);
             sessionStorage.setItem('currentUserId', safeProfile.user_id || '');
@@ -2533,6 +2551,7 @@ executeLogin: async function(identifier, password) {
         const roleAliases = {
             administrator: 'admin',
             super_admin: 'superadmin',
+            institution_admin: 'institution_admin',
             head_of_department: 'hod',
             nursinghod: 'nursing_hod',
             tvethod: 'tvet_hod'
@@ -2546,6 +2565,7 @@ executeLogin: async function(identifier, password) {
         const roleRedirects = {
             admin: 'admin.html',
             superadmin: 'superadmin.html',
+            institution_admin: 'superadmin.html',
             student: '/student',
             lecturer: 'lecturer.html',
             hod: 'admin.html',
@@ -2570,7 +2590,8 @@ executeLogin: async function(identifier, password) {
                     (role === 'student' && (path === '/student.html' || path === '/student')) ||
                     ((role === 'admin' || hodRoles.includes(role)) && (path === '/admin.html' || path === '/admin')) ||
                     (role === 'lecturer' && (path === '/lecturer.html' || path === '/lecturer')) ||
-                    (role === 'superadmin' && (path === '/superadmin.html' || path === '/superadmin'))
+                    (role === 'superadmin' && (path === '/superadmin.html' || path === '/superadmin')),
+                    (role === 'institution_admin' && (path === '/superadmin.html' || path === '/superadmin'))
                 );
                 if (isRoleDashboard || isStudentRoute) redirectFile = target.pathname + target.search + target.hash;
             }
