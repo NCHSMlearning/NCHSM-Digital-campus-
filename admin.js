@@ -900,19 +900,25 @@ document.getElementById('add-account-form')?.addEventListener('submit', async fu
 });
 
 window.approveUser = async function(userId, fullName) {
-    if (!confirm('Approve ' + fullName + '?')) return;
-    
+    if (!confirm('Approve ' + fullName + '? Their institution membership will become active.')) return;
+
     try {
-        await db.from('consolidated_user_profiles_table')
+        const { data, error } = await db.from('consolidated_user_profiles_table')
             .update({ status: 'approved' })
-            .eq('user_id', userId);
-        
+            .eq('user_id', userId)
+            .eq('status', 'pending')
+            .select('user_id,status')
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data || data.status !== 'approved') {
+            throw new Error('This account is no longer pending or is outside your institution.');
+        }
+
         showToast('✅ ' + fullName + ' approved!', 'success');
-        loadPendingUsers();
-        loadAllUsers();
-        loadDashboardNumbers();
+        await Promise.all([loadPendingUsers(), loadAllUsers(), loadDashboardNumbers()]);
     } catch(err) {
-        showToast('Error: ' + err.message, 'error');
+        showToast('Unable to approve account: ' + err.message, 'error');
     }
 };
 
