@@ -744,6 +744,45 @@
         const roleBadge=sidebar?.querySelector(".sidebar-header span");
         if(roleBadge) roleBadge.textContent="Institution Administrator";
         const restrictedTabs=new Set(["institutions","admin-approvals","system-health","data-visualization","task-scheduler","bulk-operations","api-management","quick-actions","welcome-editor","error-tracking","audit","security"]);
+        // Enforce the institution's subscribed modules in the administrator UI.
+        // This is a presentation guard only; Supabase RLS/RPC policies remain the security boundary.
+        const moduleForTab = {
+          "users":"student_management","pending":"admissions","enroll":"admissions",
+          "units":"academic_management","unit-management":"academic_management","programs":"academic_management",
+          "cats":"examinations","marks-entry":"examinations","marks-approval":"examinations",
+          "entry-control":"examinations","publish-marks":"examinations","nursing-system":"academic_management",
+          "transcript-generator":"transcripts_certificates","certificate-management":"transcripts_certificates",
+          "analytics-module":"analytics_reports","attendance":"attendance","calendar":"academic_management",
+          "student-management":"student_management","staff-management":"human_resources",
+          "messages":"administrator_portal","notification-center":"administrator_portal",
+          "resources":"learning_management","reviews-newsletter":"administrator_portal",
+          "lecturer-reports-review":"analytics_reports","research-topic-vault":"academic_management"
+        };
+        const enabledForTenant = new Set(state.moduleMap[state.access.institutionId] || []);
+        sidebar?.querySelectorAll("[data-tab]").forEach(item => {
+          const tab = String(item.dataset.tab || "");
+          const requiredModule = moduleForTab[tab];
+          if (requiredModule && !enabledForTenant.has(requiredModule)) {
+            const row = item.closest("li") || item;
+            row.style.display = "none";
+            row.dataset.cnModuleDisabled = "true";
+          }
+        });
+        // Hide dropdowns and section labels only when every child module is unavailable.
+        sidebar?.querySelectorAll("li.nav-dropdown").forEach(group => {
+          const children = [...group.querySelectorAll("[data-tab]")];
+          if (children.length && children.every(link => {
+            const row = link.closest("li") || link;
+            return row.style.display === "none";
+          })) group.style.display = "none";
+        });
+        sidebar?.querySelectorAll(".nav-section").forEach(section => {
+          const next = section.nextElementSibling;
+          if (next && next.tagName === "UL") {
+            const visible = [...next.querySelectorAll("li")].some(li => li.style.display !== "none");
+            if (!visible) section.style.display = "none";
+          }
+        });
         sidebar?.querySelectorAll("[data-tab]").forEach(item=>{
           if(restrictedTabs.has(String(item.dataset.tab||""))) {
             const row=item.closest("li")||item;
