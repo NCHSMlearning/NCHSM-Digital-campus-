@@ -1231,7 +1231,7 @@ function showSuccessAnimation(intakeDisplay) {
 // ADD LECTURER TO STAFF_RECORDS
 // ============================================
 // ============================================
-async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender, program) {
+async function addStaffToRecords(userId, email, fullName, staffId, department, phone, gender, program) {
     try {
         const sanitizedEmail = sanitizeInput(email);
         const sanitizedFullName = sanitizeInput(fullName);
@@ -1299,12 +1299,6 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
             return false;
         }
         
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password + 'NCHSM_SALT_2026');
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
         const staffData = {
             id: finalStaffId,
             title: 'Mr.',
@@ -1316,7 +1310,6 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
             phone: sanitizedPhone || '',
             gender: sanitizedGender || 'Male',
             login_enabled: false,
-            password_hash: passwordHash,
             status: 'pending',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -1697,7 +1690,6 @@ document.getElementById('register-form').addEventListener('submit', async functi
             const staffAdded = await addStaffToRecords(
                 authData.user.id,
                 email,
-                password,
                 full_name,
                 '',
                 department,
