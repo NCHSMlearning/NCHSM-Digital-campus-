@@ -348,25 +348,93 @@
     setMetric("pendingApprovals",fmt(pending.count||0),"Pending platform profile approvals");
   }
 
+  function scopeQuery(query,id) { return id ? query.eq("institution_id",id) : query; }
+
+  const dashboardCharts = window.cnDashboardCharts || (window.cnDashboardCharts = {});
+  function drawDashboardChart(canvasId,type,labels,values,label) {
+    const canvas=$(canvasId);
+    if(!canvas || typeof window.Chart!=="function") return;
+    if(dashboardCharts[canvasId]) dashboardCharts[canvasId].destroy();
+    const ctx=canvas.getContext("2d");
+    if(!ctx) return;
+    dashboardCharts[canvasId]=new window.Chart(ctx,{
+      type,
+      data:{labels,datasets:[{label,data:values,borderWidth:2,tension:.32,backgroundColor:type==="doughnut"?["#0A3D62","#FDB913","#10b981","#94a3b8"]: "rgba(10,61,98,.18)",borderColor:"#0A3D62",fill:type==="line"}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:type==="doughnut",position:"bottom"}},scales:type==="doughnut"?{}:{y:{beginAtZero:true,ticks:{precision:0}}}}
+    });
+  }
+
+  function renderTenantCharts(profiles,activityRows,students,krchn,tvet) {
+    const learnerRows=(profiles||[]).filter(p=>String(p.role||"").toLowerCase()==="student");
+    const blockCounts={};
+    learnerRows.forEach(p=>{const block=String(p.block||"Not assigned").trim()||"Not assigned";blockCounts[block]=(blockCounts[block]||0)+1;});
+    const blockLabels=Object.keys(blockCounts).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+    drawDashboardChart("enrolmentBlockChart","bar",blockLabels.length?blockLabels:["No block data"],blockLabels.length?blockLabels.map(x=>blockCounts[x]):[0],"Students");
+    const genderCounts={"Male":0,"Female":0,"Other / not specified":0};
+    learnerRows.forEach(p=>{
+      const g=String(p.gender||"").trim().toLowerCase();
+      if(["m","male"].includes(g)) genderCounts.Male++;
+      else if(["f","female"].includes(g)) genderCounts.Female++;
+      else genderCounts["Other / not specified"]++;
+    });
+    drawDashboardChart("genderDistributionChart","doughnut",Object.keys(genderCounts),Object.values(genderCounts),"Students");
+    const other=Math.max(0,Number(students||0)-Number(krchn||0)-Number(tvet||0));
+    drawDashboardChart("programBreakdownChart","doughnut",["KRCHN","TVET","Unclassified"],[Number(krchn||0),Number(tvet||0),other],"Students");
+    const now=Date.now(),hours=Array.from({length:24},(_,i)=>i);
+    const counts=hours.map(h=>({label:new Date(now-(23-h)*3600000).toLocaleTimeString("en-KE",{hour:"2-digit",timeZone:"Africa/Nairobi"}),count:0}));
+    (activityRows||[]).forEach(row=>{
+      const stamp=Date.parse(row.created_at||"");
+      if(!Number.isFinite(stamp)) return;
+      const age=Math.floor((now-stamp)/3600000);
+      if(age>=0&&age<24) counts[23-age].count++;
+    });
+    drawDashboardChart("performanceChart","line",counts.map(x=>x.label),counts.map(x=>x.count),"Audit events");
+  }
+
+  function renderDashboardActivity(rows,scopeLabel) {
+    const root=$("activityFeed");
+    if(!root) return;
+    const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const time=value=>value?new Intl.DateTimeFormat("en-KE",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Nairobi"}).format(new Date(value)):"Time unavailable";
+    if(!rows?.length){
+      root.innerHTML='<div style="padding:18px;text-align:center;color:#94a3b8;font-size:12px">No recorded activity for '+esc(scopeLabel||"this scope")+' yet.</div>';
+      return;
+    }
+    root.innerHTML=rows.slice(0,8).map(row=>{
+      const actor=row.actor_name||row.user_email||"Unidentified user";
+      const action=[row.action_type,row.module].filter(Boolean).join(" · ")||"System activity";
+      const detail=row.description||row.status||"Activity recorded";
+      return '<div style="display:flex;gap:10px;padding:9px 2px;border-bottom:1px solid #eef2f7;align-items:flex-start">'+
+        '<span style="width:8px;height:8px;margin-top:5px;border-radius:50%;background:#0f766e;flex:0 0 8px"></span>'+
+        '<div style="min-width:0;flex:1"><div style="font-size:12px;color:#0f3b53;font-weight:700">'+esc(actor)+'</div>'+
+        '<div style="font-size:11px;color:#475569;margin-top:2px">'+esc(action)+'</div>'+
+        '<div style="font-size:11px;color:#64748b;margin-top:2px;overflow-wrap:anywhere">'+esc(detail)+'</div></div>'+
+        '<time style="font-size:10px;color:#94a3b8;white-space:nowrap">'+esc(time(row.created_at))+'</time></div>';
+    }).join("");
+    const stamp=$("feedTimestamp");
+    if(stamp) stamp.textContent="Updated "+new Intl.DateTimeFormat("en-KE",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Nairobi"}).format(new Date());
+  }
+
   async function applyInstitutionScope(client,institution,platform) {
-    const id=institution.id;
-    const profileResult=await client.from("consolidated_user_profiles_table")
-      .select("id,user_id,role,status",{count:"exact"}).eq("institution_id",id);
+    const id=institution?.id||null;
+    const profileQuery=scopeQuery(client.from("consolidated_user_profiles_table")
+      .select("id,user_id,role,status,program,program_type,block,gender,created_at",{count:"exact"}),id).limit(2000);
+    const profileResult=await profileQuery;
     if(profileResult.error) throw profileResult.error;
     const members=profileResult.data||[];
     const userIds=[...new Set(members.map(x=>x.user_id).filter(Boolean))];
     const totalUsers=profileResult.count ?? members.length;
-
+    const profileCount=(apply)=>apply(scopeQuery(client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}),id));
     const [studentCount,pendingCount,activeCount,krchnCount,tvetCount,lecturerCount,staffCount,maleCount,femaleCount] = await Promise.all([
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("role","student"),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("status","pending"),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("status","active"),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("role","student").ilike("program_type","krchn"),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("role","student").ilike("program_type","tvet"),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("role","lecturer"),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).not("role","in",'("student","applicant","superadmin","super_admin")'),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("role","student").in("gender",["male","m"]),
-      client.from("consolidated_user_profiles_table").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("role","student").in("gender",["female","f"])
+      profileCount(q=>q.ilike("role","student")),
+      profileCount(q=>q.ilike("status","pending")),
+      profileCount(q=>q.ilike("status","active")),
+      profileCount(q=>q.ilike("role","student").ilike("program_type","krchn")),
+      profileCount(q=>q.ilike("role","student").ilike("program_type","tvet")),
+      profileCount(q=>q.ilike("role","lecturer")),
+      profileCount(q=>q.not("role","in",'("student","applicant","superadmin","super_admin")')),
+      profileCount(q=>q.ilike("role","student").in("gender",["male","m"])),
+      profileCount(q=>q.ilike("role","student").in("gender",["female","f"]))
     ]);
     [studentCount,pendingCount,activeCount,krchnCount,tvetCount,lecturerCount,staffCount,maleCount,femaleCount].forEach(result=>{if(result.error) throw result.error;});
 
@@ -380,22 +448,35 @@
       const date=new Date(localNoonUtc+(offsetDays-weekday)*86400000);
       return date.getUTCFullYear()+"-"+String(date.getUTCMonth()+1).padStart(2,"0")+"-"+String(date.getUTCDate()).padStart(2,"0");
     };
-    const weekStartDate=localDateString(0);
-    const weekEndDate=localDateString(7);
-
+    const weekStartDate=localDateString(0),weekEndDate=localDateString(7);
+    const countQuery=(table)=>scopeQuery(client.from(table).select("id",{count:"exact",head:true}),id);
     const jobs=[];
     const add=(key,promise)=>jobs.push([key,promise]);
-    add("attendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).eq("institution_id",id));
-    add("todayAttendance",client.from("geo_attendance_logs").select("student_id").eq("institution_id",id)
-      .ilike("user_role","student").gte("created_at",todayStart).lt("created_at",todayEnd));
-    add("courses",client.from("courses").select("id",{count:"exact",head:true}).eq("institution_id",id));
-    add("resources",client.from("resources").select("id",{count:"exact",head:true}).eq("institution_id",id));
-    add("tickets",client.from("support_tickets").select("id,status,priority",{count:"exact"}).eq("institution_id",id));
-    add("pendingUnitRegistrations",client.from("student_unit_registrations").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("status","pending"));
-    add("pendingMarks",client.from("student_marks").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("approval_status","pending").eq("published",false));
-    add("publishedMarks",client.from("student_marks").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("approval_status","approved").eq("published",true));
-    add("pendingMessages",client.from("messages").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("approval_status","pending"));
-    add("weeklySessions",client.from("scheduled_sessions").select("id",{count:"exact",head:true}).eq("institution_id",id).gte("session_date",weekStartDate).lt("session_date",weekEndDate));
+    add("attendance",countQuery("geo_attendance_logs"));
+    add("todayAttendance",scopeQuery(client.from("geo_attendance_logs").select("student_id").ilike("user_role","student")
+      .gte("created_at",todayStart).lt("created_at",todayEnd),id));
+    add("courses",countQuery("courses"));
+    add("resources",countQuery("resources"));
+    add("tickets",scopeQuery(client.from("support_tickets").select("id,status,priority"),id));
+    add("pendingUnitRegistrations",scopeQuery(client.from("student_unit_registrations").select("id",{count:"exact",head:true}).ilike("status","pending"),id));
+    add("pendingMarks",scopeQuery(client.from("student_marks").select("id",{count:"exact",head:true}).ilike("approval_status","pending").eq("published",false),id));
+    add("publishedMarks",scopeQuery(client.from("student_marks").select("id",{count:"exact",head:true}).ilike("approval_status","approved").eq("published",true),id));
+    add("pendingMessages",scopeQuery(client.from("messages").select("id",{count:"exact",head:true}).ilike("approval_status","pending"),id));
+    add("weeklySessions",scopeQuery(client.from("scheduled_sessions").select("id",{count:"exact",head:true})
+      .gte("session_date",weekStartDate).lt("session_date",weekEndDate),id));
+    add("programs",countQuery("programs"));
+    add("activePrograms",scopeQuery(client.from("programs").select("id",{count:"exact",head:true}).ilike("status","active"),id));
+    add("inactivePrograms",scopeQuery(client.from("programs").select("id",{count:"exact",head:true}).not("status","ilike","active"),id));
+    add("units",countQuery("units_catalog"));
+    add("intakes",countQuery("program_intakes"));
+    add("blocks",countQuery("program_blocks"));
+    add("upcomingExams",scopeQuery(client.from("exams").select("id",{count:"exact",head:true})
+      .gte("exam_date",nairobiDate).not("status","in",'("cancelled","completed","closed")'),id));
+    add("pendingReviews",scopeQuery(client.from("student_reviews").select("id",{count:"exact",head:true}).ilike("status","pending"),id));
+    add("systemAlerts",scopeQuery(client.from("exam_proctoring_logs").select("id",{count:"exact",head:true})
+      .eq("is_read",false).in("severity",["high","critical","HIGH","CRITICAL"]),id));
+    add("activity",scopeQuery(client.from("audit_logs").select("created_at,actor_name,user_email,role,user_role,action_type,module,description,status,ip_address,device_info")
+      .order("created_at",{ascending:false}).limit(500),id));
     if(userIds.length) add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("is_active",true));
     const results={};
     const settled=await Promise.all(jobs.map(async ([key,promise])=>[key,await promise]));
@@ -407,89 +488,94 @@
     const students=studentCount.count||0;
     const todayPresent=results.todayAttendance?.unavailable?null:new Set((results.todayAttendance?.data||[]).map(row=>row.student_id).filter(Boolean)).size;
     const attendancePercent=todayPresent===null?null:(students?Math.min(100,Math.round(todayPresent/students*100)):0);
+    const scopeLabel=institution?.name||"all institutions";
     const scopeDescription=$("cnDashboardScopeDescription");
-    if(scopeDescription) scopeDescription.textContent=totalUsers
+    if(scopeDescription) scopeDescription.textContent=institution
       ? "Showing institution-linked records only · "+fmt(totalUsers)+" assigned users"
-      : "No users are assigned to this institution yet. Unlinked legacy records are excluded.";
+      : "Consolidated platform view · "+fmt(totalUsers)+" user profiles across all institutions and legacy records.";
 
+    const countValue=(key)=>results[key]?.unavailable?"—":fmt(results[key]?.count||0);
     const metricEntries={
-      totalUsers:{value:fmt(totalUsers),detail:"Users assigned to this institution"},
-      totalStudents:{value:fmt(students),detail:"Student profiles assigned to this institution"},
-      pendingApprovals:{value:fmt(pendingCount.count||0),detail:"Pending institution profile approvals"},
-      activeSessions:{value:results.sessions?.unavailable?"—":fmt(results.sessions?.count||0),detail:"Active sessions for institution members",unavailable:!!results.sessions?.unavailable},
+      totalUsers:{value:fmt(totalUsers),detail:institution?"Users assigned to this institution":"All platform user profiles"},
+      totalStudents:{value:fmt(students),detail:institution?"Student profiles assigned to this institution":"All platform student profiles"},
+      pendingApprovals:{value:fmt(pendingCount.count||0),detail:"Pending user profile approvals"},
+      activeSessions:{value:results.sessions?.unavailable?"—":fmt(results.sessions?.count||0),detail:"Active user sessions",unavailable:!!results.sessions?.unavailable},
       totalDailyCheckIns:{value:todayPresent===null?"—":fmt(todayPresent),detail:"Unique student check-ins today · Nairobi time",unavailable:todayPresent===null},
-      overallCheckInCount:{value:results.attendance?.unavailable?"—":fmt(results.attendance?.count||0),detail:"Institution attendance records · all time",unavailable:!!results.attendance?.unavailable},
-      totalCourses:{value:results.courses?.unavailable?"—":fmt(results.courses?.count||0),detail:"Courses linked to this institution",unavailable:!!results.courses?.unavailable},
-      totalResources:{value:results.resources?.unavailable?"—":fmt(results.resources?.count||0),detail:"Resources linked to this institution",unavailable:!!results.resources?.unavailable},
-      dashboardPendingUnitReg:{value:results.pendingUnitRegistrations?.unavailable?"—":fmt(results.pendingUnitRegistrations?.count||0),detail:"Pending unit registrations for this institution",unavailable:!!results.pendingUnitRegistrations?.unavailable},
-      dashboardPendingMarks:{value:results.pendingMarks?.unavailable?"—":fmt(results.pendingMarks?.count||0),detail:"Marks awaiting approval for this institution",unavailable:!!results.pendingMarks?.unavailable},
-      dashboardPublishedMarks:{value:results.publishedMarks?.unavailable?"—":fmt(results.publishedMarks?.count||0),detail:"Approved marks published to students",unavailable:!!results.publishedMarks?.unavailable},
-      dashboardPendingMessages:{value:results.pendingMessages?.unavailable?"—":fmt(results.pendingMessages?.count||0),detail:"Messages awaiting approval for this institution",unavailable:!!results.pendingMessages?.unavailable},
-      dashboardLecturersCount:{value:fmt(lecturerCount.count||0),detail:"Lecturer profiles assigned to this institution"},
-      dashboardAttendanceToday:{value:attendancePercent===null?"—":attendancePercent+"%",detail:todayPresent===null?"Attendance data unavailable":"Unique students present / institution student count",unavailable:attendancePercent===null},
-      dashboardTotalSessions:{value:results.weeklySessions?.unavailable?"—":fmt(results.weeklySessions?.count||0),detail:"Scheduled sessions this week",unavailable:!!results.weeklySessions?.unavailable},
-      totalStaffCount:{value:fmt(staffCount.count||0),detail:"Institution staff profiles · excludes learners and platform super admins"},
-      totalStaffCountDisplay:{value:fmt(staffCount.count||0),detail:"Institution staff profiles"},
-      totalResourcesDisplay:{value:results.resources?.unavailable?"—":fmt(results.resources?.count||0),detail:"Institution resources",unavailable:!!results.resources?.unavailable},
-      krchnCountDisplay:{value:fmt(krchnCount.count||0),detail:"KRCHN student profiles"},
-      tvetCountDisplay:{value:fmt(tvetCount.count||0),detail:"TVET student profiles"},
-      statsTotalStudents:{value:fmt(students),detail:"Institution students"},
+      overallCheckInCount:{value:countValue("attendance"),detail:"Attendance records · all time",unavailable:!!results.attendance?.unavailable},
+      totalCourses:{value:countValue("courses"),detail:"Courses in scope",unavailable:!!results.courses?.unavailable},
+      totalResources:{value:countValue("resources"),detail:"Learning resources in scope",unavailable:!!results.resources?.unavailable},
+      totalResourcesDisplay:{value:countValue("resources"),detail:"Learning resources in scope",unavailable:!!results.resources?.unavailable},
+      dashboardPendingUnitReg:{value:countValue("pendingUnitRegistrations"),detail:"Pending unit registrations",unavailable:!!results.pendingUnitRegistrations?.unavailable},
+      dashboardPendingMarks:{value:countValue("pendingMarks"),detail:"Marks awaiting approval",unavailable:!!results.pendingMarks?.unavailable},
+      dashboardPublishedMarks:{value:countValue("publishedMarks"),detail:"Approved marks published to students",unavailable:!!results.publishedMarks?.unavailable},
+      dashboardPendingMessages:{value:countValue("pendingMessages"),detail:"Messages awaiting approval",unavailable:!!results.pendingMessages?.unavailable},
+      dashboardLecturersCount:{value:fmt(lecturerCount.count||0),detail:"Lecturer profiles in scope"},
+      dashboardAttendanceToday:{value:attendancePercent===null?"—":attendancePercent+"%",detail:todayPresent===null?"Attendance data unavailable":"Unique students present / total students",unavailable:attendancePercent===null},
+      dashboardTotalSessions:{value:countValue("weeklySessions"),detail:"Scheduled sessions this week",unavailable:!!results.weeklySessions?.unavailable},
+      dashboardTotalPrograms:{value:countValue("programs"),detail:"Programme records with institution ownership",unavailable:!!results.programs?.unavailable},
+      dashboardTotalUnits:{value:countValue("units"),detail:"Unit catalogue records with institution ownership",unavailable:!!results.units?.unavailable},
+      dashboardUpcomingExams:{value:countValue("upcomingExams"),detail:"Upcoming examinations",unavailable:!!results.upcomingExams?.unavailable},
+      dashboardPendingReviews:{value:countValue("pendingReviews"),detail:"Student reviews awaiting moderation",unavailable:!!results.pendingReviews?.unavailable},
+      dashboardSystemAlerts:{value:countValue("systemAlerts"),detail:"Unread high-priority proctoring alerts",unavailable:!!results.systemAlerts?.unavailable},
+      totalStaffCount:{value:fmt(staffCount.count||0),detail:"Staff profiles · excludes learners and platform super admins"},
+      totalStaffCountDisplay:{value:fmt(staffCount.count||0),detail:"Staff profiles in scope"},
+      krchnCountDisplay:{value:fmt(krchnCount.count||0),detail:"KRCHN profiles by programme type"},
+      tvetCountDisplay:{value:fmt(tvetCount.count||0),detail:"TVET profiles by programme type"},
+      statsTotalStudents:{value:fmt(students),detail:"Students in scope"},
       statsKrchnCount:{value:fmt(krchnCount.count||0),detail:"KRCHN student profiles"},
       statsTvetCount:{value:fmt(tvetCount.count||0),detail:"TVET student profiles"},
       statsMaleTotal:{value:fmt(maleCount.count||0),detail:"Student profiles recorded as male"},
       statsFemaleTotal:{value:fmt(femaleCount.count||0),detail:"Student profiles recorded as female"},
+      statsProgramCount:{value:countValue("programs"),detail:"Programme catalogue entries"},
+      activeProgramsCount:{value:countValue("activePrograms"),detail:"Active programme records",unavailable:!!results.activePrograms?.unavailable},
+      inactiveProgramsCount:{value:countValue("inactivePrograms"),detail:"Inactive programme records",unavailable:!!results.inactivePrograms?.unavailable},
+      totalIntakesCount:{value:countValue("intakes"),detail:"Programme intake records",unavailable:!!results.intakes?.unavailable},
+      totalBlocksCount:{value:countValue("blocks"),detail:"Programme block records",unavailable:!!results.blocks?.unavailable},
       userGrowth:{value:"—",detail:null,textOnly:true},
       pendingGrowth:{value:"—",detail:null,textOnly:true},
       studentGrowth:{value:"—",detail:null,textOnly:true},
-      ticketGrowth:{value:"—",detail:null,textOnly:true}
+      ticketGrowth:{value:"—",detail:null,textOnly:true},
+      dataIntegrityScore:{value:"—",detail:"A validated cross-table integrity score is not yet defined",unavailable:true},
+      systemUptime:{value:"—",detail:"No verified uptime monitoring source connected",unavailable:true}
     };
-    Object.entries(metricEntries).forEach(([metric,entry])=>setMetric(metric,entry.value,entry.detail));
-
     if(results.tickets?.unavailable){
-      metricEntries.dashboardOpenTickets={value:"—",detail:"Institution ticket data unavailable · check permissions",unavailable:true};
-      metricEntries.dashboardUrgentTickets={value:"—",detail:"Institution ticket data unavailable · check permissions",unavailable:true};
+      metricEntries.dashboardOpenTickets={value:"—",detail:"Ticket data unavailable · check permissions",unavailable:true};
+      metricEntries.dashboardUrgentTickets={value:"—",detail:"Ticket data unavailable · check permissions",unavailable:true};
     } else {
       const tickets=results.tickets.data||[];
       const open=tickets.filter(t=>!["closed","resolved","complete","completed"].includes(String(t.status||"").toLowerCase()));
-      const urgent=open.filter(t=>["urgent","high","critical"].includes(String(t.priority||"").toLowerCase()));
-      metricEntries.dashboardOpenTickets={value:fmt(open.length),detail:"Open tickets for this institution"};
-      metricEntries.dashboardUrgentTickets={value:fmt(urgent.length),detail:"Urgent tickets for this institution"};
+      metricEntries.dashboardOpenTickets={value:fmt(open.length),detail:"Open tickets awaiting response"};
+      metricEntries.dashboardUrgentTickets={value:fmt(open.filter(t=>["urgent","high","critical"].includes(String(t.priority||"").toLowerCase())).length),detail:"Urgent tickets requiring attention"};
     }
-    Object.entries(metricEntries).forEach(([metric,entry])=>setMetric(metric,entry.value,entry.detail));
-
-    // These source tables do not have a trustworthy tenant key. Do not infer
-    // ownership through program labels or globally shared exam/question IDs.
-    const unavailableMetrics=[
-      ["dashboardTotalPrograms","Programme master has no institution ownership field"],
-      ["dashboardTotalUnits","Unit catalogue has no institution ownership field"],
-      ["dashboardUpcomingExams","Exam records have no institution ownership field"],
-      ["dashboardPendingReviews","Student reviews have no institution ownership field"],
-      ["dashboardSystemAlerts","System alerts cannot yet be attributed to one institution"],
-      ["activeProgramsCount","Programme master has no institution ownership field"],
-      ["inactiveProgramsCount","Programme master has no institution ownership field"],
-      ["totalIntakesCount","Programme intakes have no institution ownership field"],
-      ["totalBlocksCount","Programme blocks have no institution ownership field"],
-      ["statsProgramCount","Programme master has no institution ownership field"],
-      ["dataIntegrityScore","No verified institution-specific integrity calculation is configured"],
-      ["systemUptime","No verified uptime monitoring source connected"]
-    ];
-    unavailableMetrics.forEach(([metric,reason])=>{
-      metricEntries[metric]={value:"—",detail:reason,unavailable:true};
-      markUnavailable(metric,reason);
+    Object.entries(metricEntries).forEach(([metric,entry])=>{
+      setMetric(metric,entry.value,entry.detail);
+      if(entry.unavailable) $(metric)?.closest(".dashboard-card")?.classList.add("cn-scope-unavailable");
+      else $(metric)?.closest(".dashboard-card")?.classList.remove("cn-scope-unavailable");
     });
 
-    const uptime=$("systemUptime");
-    if(uptime){uptime.textContent="—";const detail=uptime.closest(".dashboard-card")?.querySelector("p:last-child");if(detail)detail.textContent="No verified uptime monitoring source connected";}
+    const activityRows=results.activity?.unavailable?[]:(results.activity?.data||[]);
+    renderDashboardActivity(activityRows,scopeLabel);
+    renderTenantCharts(members,activityRows,students,krchnCount.count||0,tvetCount.count||0);
 
-    setPlatform("institutions","1","Selected institution");
-    setPlatform("active",institution.status==="active"?"1":"0","Institution status: "+institution.status);
-    setPlatform("suspended",institution.status==="suspended"?"1":"0","Suspension status");
-    setPlatform("pending",institution.onboarding_status==="ready"?"0":"1","Setup: "+institution.onboarding_status);
-    setPlatform("members",fmt(totalUsers),fmt(activeCount.count||0)+" active profiles");
-    setPlatform("modules",fmt(platform.modules.filter(x=>x.institution_id===id&&x.enabled).length),"Enabled for this institution");
-    setPlatform("subscriptions",fmt(platform.subscriptions.filter(x=>x.institution_id===id).length),"Subscriptions for this institution");
-    setPlatform("audits",fmt(platform.audits.filter(x=>x.institution_id===id).length),"Audit events for this institution");
-
+    if(institution){
+      setPlatform("institutions","1","Selected institution");
+      setPlatform("active",institution.status==="active"?"1":"0","Institution status: "+institution.status);
+      setPlatform("suspended",institution.status==="suspended"?"1":"0","Suspension status");
+      setPlatform("pending",institution.onboarding_status==="ready"?"0":"1","Setup: "+institution.onboarding_status);
+      setPlatform("members",fmt(totalUsers),fmt(activeCount.count||0)+" active profiles");
+      setPlatform("modules",fmt(platform.modules.filter(x=>x.institution_id===id&&x.enabled).length),"Enabled for this institution");
+      setPlatform("subscriptions",fmt(platform.subscriptions.filter(x=>x.institution_id===id).length),"Subscriptions for this institution");
+      setPlatform("audits",fmt(platform.audits.filter(x=>x.institution_id===id).length),"Audit events for this institution");
+    } else {
+      setPlatform("institutions",fmt(platform.institutions.length),"All registered tenants");
+      setPlatform("active",fmt(platform.institutions.filter(x=>x.status==="active").length),"Currently enabled");
+      setPlatform("suspended",fmt(platform.institutions.filter(x=>x.status==="suspended").length),"Suspended institutions");
+      setPlatform("pending",fmt(platform.institutions.filter(x=>x.status!=="active"&&x.status!=="suspended").length),"Onboarding / status pending");
+      setPlatform("members",fmt(platform.members.length),"Institution membership records");
+      setPlatform("modules",fmt(platform.modules.filter(x=>x.enabled).length),"Enabled institution modules");
+      setPlatform("subscriptions",fmt(platform.subscriptions.length),"Subscription records");
+      setPlatform("audits",fmt(platform.audits.length),"Platform audit events");
+    }
     lockScopedMetrics(metricEntries);
   }
 
@@ -508,8 +594,7 @@
       const institution=state.institutions.find(x=>x.id===selected);
       updateScopeText(institution||null);
       publishScope();
-      if(institution) await applyInstitutionScope(client,institution,platform);
-      else { restoreLegacyMetrics(); await loadGlobalIdentityMetrics(client); }
+      await applyInstitutionScope(client,institution||null,platform);
       if(updated) updated.textContent="Updated "+new Intl.DateTimeFormat("en-KE",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Nairobi"}).format(new Date());
     }catch(error){
       console.error("[Campus Nexus dashboard filter]",error);
