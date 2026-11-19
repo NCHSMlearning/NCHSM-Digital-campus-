@@ -29,6 +29,7 @@ let studentIdCheckTimeout = null;
 let studentIdCheckInProgress = false;
 let emailCheckTimeout = null;
 let emailCheckInProgress = false;
+let resolvedInstitutionContext = null;
 
 // ============================================
 // STORED DOCUMENTS DATA
@@ -192,6 +193,150 @@ function sanitizeInput(input) {
     sanitized = sanitized.trim().slice(0, 255);
     
     return sanitized;
+}
+
+// ============================================
+// INSTITUTION SCHOOL-CODE GATE
+// ============================================
+function normalizeSchoolCode(value) {
+    return String(value || '').trim().replace(/[\s-]+/g, '');
+}
+
+async function resolveInstitutionContext(code, host) {
+    const { data, error } = await sb.rpc('resolve_institution_registration_context', {
+        p_code: code || null,
+        p_host: host || null
+    });
+    if (error) throw error;
+    if (!data || !data.institution_id || !data.school_code) {
+        throw new Error('School code not recognised, institution inactive, or registration is currently closed.');
+    }
+    return data;
+}
+
+function updateRegistrationSchoolCodeUrl(schoolCode) {
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('school_code', schoolCode);
+        url.searchParams.delete('institution_code');
+        url.searchParams.delete('institution');
+        window.history.replaceState({}, '', url.toString());
+    } catch (_) {}
+}
+
+function renderInstitutionContextBanner(context, form) {
+    let banner = document.getElementById('cn-institution-context-banner');
+    if (!banner) {
+        banner = document.createElement('section');
+        banner.id = 'cn-institution-context-banner';
+        banner.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px 18px;margin:0 0 18px;border:1px solid #cbd5e1;border-radius:14px;background:#f8fafc;color:#0f172a;';
+        form.parentNode.insertBefore(banner, form);
+    }
+    banner.replaceChildren();
+    const primary = /^#[0-9a-f]{6}$/i.test(String(context.primary_color || '')) ? context.primary_color : '#082f49';
+    banner.style.borderLeft = '5px solid ' + primary;
+    if (context.logo_url && /^https:\/\//i.test(context.logo_url)) {
+        const logo = document.createElement('img');
+        logo.src = context.logo_url;
+        logo.alt = '';
+        logo.referrerPolicy = 'no-referrer';
+        logo.style.cssText = 'width:54px;height:54px;object-fit:contain;border-radius:8px;background:#fff;padding:4px;';
+        banner.appendChild(logo);
+    }
+    const copy = document.createElement('div');
+    copy.style.cssText = 'display:flex;flex-direction:column;gap:4px;min-width:0;';
+    const title = document.createElement('strong');
+    title.textContent = context.institution_name || 'Your institution';
+    title.style.cssText = 'font-size:16px;color:' + primary + ';';
+    const subtitle = document.createElement('span');
+    subtitle.textContent = 'Institution registration · School code: ' + context.school_code;
+    subtitle.style.cssText = 'font-size:12px;color:#475569;';
+    copy.append(title, subtitle);
+    banner.appendChild(copy);
+}
+
+async function initializeInstitutionRegistration() {
+    const form = document.getElementById('register-form');
+    if (!form || !form.parentNode) return;
+    form.hidden = true;
+
+    const gate = document.createElement('section');
+    gate.id = 'cn-school-code-gate';
+    gate.style.cssText = 'max-width:560px;margin:24px auto;padding:24px;border:1px solid #cbd5e1;border-radius:16px;background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.08);';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Enter your school code';
+    heading.style.cssText = 'margin:0 0 8px;color:#082f49;font-size:22px;';
+    const intro = document.createElement('p');
+    intro.textContent = 'Enter the 12-digit code provided by your institution. We will identify your school and open the correct registration form.';
+    intro.style.cssText = 'margin:0 0 16px;color:#475569;line-height:1.5;';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.maxLength = 16;
+    input.placeholder = 'e.g. 700 101 101 150';
+    input.setAttribute('aria-label', '12-digit school code');
+    input.style.cssText = 'box-sizing:border-box;width:100%;padding:13px 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:17px;letter-spacing:1px;';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Continue to registration';
+    button.style.cssText = 'margin-top:12px;width:100%;padding:13px 16px;border:0;border-radius:10px;background:#082f49;color:#fff;font-weight:700;cursor:pointer;';
+    const message = document.createElement('p');
+    message.setAttribute('role', 'status');
+    message.style.cssText = 'min-height:20px;margin:12px 0 0;color:#b91c1c;font-size:13px;';
+    gate.append(heading, intro, input, button, message);
+    form.parentNode.insertBefore(gate, form);
+
+    const showContext = (context) => {
+        resolvedInstitutionContext = context;
+        renderInstitutionContextBanner(context, form);
+        updateRegistrationSchoolCodeUrl(context.school_code);
+        gate.remove();
+        form.hidden = false;
+    };
+
+    const resolve = async (code, host) => {
+        button.disabled = true;
+        button.textContent = 'Checking school code…';
+        message.style.color = '#475569';
+        message.textContent = 'Verifying your institution…';
+        try {
+            const context = await resolveInstitutionContext(code, host);
+            showContext(context);
+        } catch (error) {
+            message.style.color = '#b91c1c';
+            message.textContent = error.message || 'Unable to verify this school code.';
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Continue to registration';
+        }
+    };
+
+    button.addEventListener('click', async () => {
+        const code = normalizeSchoolCode(input.value);
+        if (!/^[0-9]{12}$/.test(code)) {
+            message.style.color = '#b91c1c';
+            message.textContent = 'Enter the complete 12-digit school code.';
+            return;
+        }
+        await resolve(code, null);
+    });
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            button.click();
+        }
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const suppliedCode = params.get('school_code') || params.get('institution_code') || params.get('institution') || '';
+    if (suppliedCode) {
+        await resolve(suppliedCode, null);
+    } else if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+        await resolve('', window.location.hostname);
+    } else {
+        input.focus();
+    }
 }
 
 // ============================================
@@ -1604,35 +1749,25 @@ document.getElementById('register-form').addEventListener('submit', async functi
         const defaultBlock = 'Introductory';
         const intakeData = getIntakeData();
         
-        // The registration URL carries an institution-specific code. The database trigger
-        // resolves this code against institution_registration_links and assigns the tenant.
-        const registrationParams = new URLSearchParams(window.location.search);
-        let institutionCode = String(
-            registrationParams.get('institution_code') || registrationParams.get('institution') || ''
-        ).trim().toLowerCase();
-
-        // A school custom domain (for example nyanchwa.co.ke/register) resolves
-        // to its active registration code without requiring a query-string token.
-        if (!institutionCode && window.location.hostname) {
-            const { data: resolvedCode, error: resolveError } = await sb.rpc(
-                'resolve_institution_registration_code',
-                { p_host: window.location.hostname }
-            );
-            if (resolveError) throw resolveError;
-            institutionCode = String(resolvedCode || '').trim().toLowerCase();
+        // Resolve and bind the account to the institution verified by its school code.
+        if (!resolvedInstitutionContext) {
+            const registrationParams = new URLSearchParams(window.location.search);
+            const suppliedCode = registrationParams.get('school_code') ||
+                registrationParams.get('institution_code') || registrationParams.get('institution') || '';
+            resolvedInstitutionContext = await resolveInstitutionContext(suppliedCode, window.location.hostname);
         }
-        if (!institutionCode && ['localhost','127.0.0.1'].includes(window.location.hostname)) {
-            institutionCode = 'nchsm';
-        }
-        if (!institutionCode || !/^[a-z0-9_-]{2,80}$/.test(institutionCode)) {
-            throw new Error('This institution registration link is invalid. Please use the link provided by your institution.');
+        const institutionCode = normalizeSchoolCode(resolvedInstitutionContext.school_code);
+        if (!/^[0-9]{12}$/.test(institutionCode)) {
+            throw new Error('The institution school code could not be verified. Please reload the registration link.');
         }
 
         let userMetadata = {
             full_name, role, phone, alt_phone, national_id,
             date_of_birth: dob, gender, address, status: 'pending',
             student_type: selectedStudentType,
-            institution_code: institutionCode
+            school_code: institutionCode,
+            institution_code: institutionCode,
+            registration_source: 'campus_nexus_school_registration'
         };
         
         if (role === 'student') {
@@ -1799,7 +1934,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
         await Promise.allSettled(uploadPromises);
         
         const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
-        showFeedback(`✅ Registration successful! Please check your email to verify your account.`, 'success');
+        showFeedback(`✅ Registration submitted! Please verify your email. Your account will remain pending until your institution administrator approves it.`, 'success');
         
         showSuccessAnimation(displayIntake);
         localStorage.removeItem('registration_draft');
@@ -1822,6 +1957,9 @@ document.getElementById('register-form').addEventListener('submit', async functi
 // ============================================
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
+    initializeInstitutionRegistration().catch(error => {
+        console.error('Institution registration context could not be loaded:', error);
+    });
     // Generate CSRF Token
     generateCSRFToken();
     
