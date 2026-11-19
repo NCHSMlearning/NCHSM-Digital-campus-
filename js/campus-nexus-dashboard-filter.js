@@ -66,7 +66,11 @@
     state.snapshot = {};
     ids.forEach(id => {
       const el = $(id);
-      if (el) state.snapshot[id] = el.textContent;
+      if (el) {
+        const card=el.closest(".dashboard-card");
+        const detail=card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node=>node!==el);
+        state.snapshot[id]={value:el.textContent,detail:detail?.textContent||null};
+      }
     });
   }
 
@@ -74,9 +78,9 @@
     const el = $(id);
     if (el) el.textContent = value;
     if (detail && el) {
-      const card = el.closest(".dashboard-card");
-      const sub = card?.querySelector(".minor-data");
-      if (sub) sub.textContent = detail;
+      const card=el.closest(".dashboard-card");
+      const sub=card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node=>node!==el);
+      if(sub) sub.textContent=detail;
     }
   }
 
@@ -135,8 +139,11 @@
     Object.entries(state.snapshot).forEach(([id,value]) => {
       const el = $(id);
       if (el) {
-        el.textContent = value;
-        el.closest(".dashboard-card")?.classList.remove("cn-scope-unavailable");
+        el.textContent = value?.value ?? value;
+        const card=el.closest(".dashboard-card");
+        const detail=card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node=>node!==el);
+        if(detail && value?.detail!==undefined && value.detail!==null) detail.textContent=value.detail;
+        card?.classList.remove("cn-scope-unavailable");
       }
     });
     const labels = {
