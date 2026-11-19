@@ -663,7 +663,7 @@ main.main>header{width:100%;max-width:100%;min-width:0}
 @media(max-width:768px){.sidebar-account-footer{padding-bottom:8px}}
 </style>
   <link rel="stylesheet" href="css/superadmin-mobile-fixes.css?v=20261118-global-dashboard-v1">
-    <link rel="stylesheet" href="css/nchsm-superadmin-responsive.css?v=20261119a">
+    <link rel="stylesheet" href="css/nchsm-superadmin-responsive.css?v=20261119b">
 </head>
 <body>
     <div class="container">
@@ -15366,7 +15366,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   // The module's existing delegated click handler runs first and switches content.
   document.addEventListener('click',function(event){
-    if(window.innerWidth>768||!sidebar.classList.contains('active'))return;
+    if(window.innerWidth>1100||!sidebar.classList.contains('active'))return;
     const moduleLink=event.target.closest('#mainNav a[data-tab]');
     if(moduleLink){
       requestAnimationFrame(function(){
@@ -15382,7 +15382,7 @@ document.addEventListener('DOMContentLoaded',function(){
       sidebar.classList.remove('active');sync();toggle.focus();
     }
   });
-  window.addEventListener('resize',function(){if(window.innerWidth>768){sidebar.classList.remove('active');sync();}});
+  window.addEventListener('resize',function(){if(window.innerWidth>1100){sidebar.classList.remove('active');sync();}});
   sync();
 })();
 </script>
