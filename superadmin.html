@@ -14209,7 +14209,9 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
       <div class="cn-field"><label for="cnInstitutionEmail">Official contact email</label><input id="cnInstitutionEmail" type="email" placeholder="admin@institution.ac.ke"></div>
       <div class="cn-field"><label for="cnInstitutionPhone">Contact phone</label><input id="cnInstitutionPhone" type="tel" placeholder="+254…"></div>
       <div class="cn-field"><label for="cnInstitutionWebsite">Website URL</label><input id="cnInstitutionWebsite" type="url" placeholder="https://institution.ac.ke"></div>
-      <div class="cn-field"><label for="cnInstitutionLogo">Institutional logo URL</label><input id="cnInstitutionLogo" type="url" placeholder="https://…/institution-logo.png"><small class="cn-help">Use a public HTTPS image URL. A dedicated logo upload workflow can be connected to storage separately.</small></div>
+      <div class="cn-field"><label for="cnInstitutionPhysicalAddress">Physical address</label><input id="cnInstitutionPhysicalAddress" placeholder="Town, county, country"></div>
+      <div class="cn-field"><label for="cnInstitutionPostalAddress">Postal address / P.O. Box</label><input id="cnInstitutionPostalAddress" placeholder="P.O. Box 22-40200"></div>
+      <div class="cn-field cn-span"><label for="cnInstitutionLogoFile">Institutional logo</label><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><img id="cnInstitutionLogoPreview" alt="Institution logo preview" hidden style="width:88px;height:88px;object-fit:contain;background:#fff;border:1px solid #dbe3ea;border-radius:12px;padding:7px"><input id="cnInstitutionLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><input id="cnInstitutionLogo" type="hidden" value=""></div><small class="cn-help">Upload PNG, JPG, WEBP or SVG. Maximum size 2 MB. The logo is saved to institution storage and used for institution branding.</small></div>
       <div class="cn-field"><label for="cnInstitutionDomain">Institution website / domain</label><input id="cnInstitutionDomain" placeholder="e.g. institution.ac.ke or portal.campusnexus.co.ke"></div>
       <div class="cn-step-title cn-span"><span class="cn-step-number">2</span> Institutional branding</div>
       <div class="cn-field cn-span"><label>Brand colour palette <span class="cn-help-inline">Choose up to six colours</span></label>
@@ -14911,7 +14913,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 <!-- MAIN APPLICATION - ES MODULE                  -->
 <!-- ============================================ -->
 <script type="module" src="script.js?v=20261118-tenant-scope-v1" defer></script>
-<script type="module" src="js/campus-nexus-institutions.js?v=20261119-school-codes-v2"></script>
+<script type="module" src="js/campus-nexus-institutions.js?v=20261119-institution-logo-upload-v1"></script>
 <script type="module" src="js/campus-nexus-dashboard-filter.js?v=20261119-registration-approvals-v2"></script>
 <script type="module" src="js/campus-nexus-registration-approvals.js?v=20261119-registration-approvals-v1"></script>
 <!-- ============================================ -->
