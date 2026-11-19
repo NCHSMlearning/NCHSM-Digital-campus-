@@ -144,8 +144,27 @@
       pendingApprovals:"Legacy NCHSM data · not tenant-linked", dashboardOpenTickets:"Legacy NCHSM data · not tenant-linked",
       totalDailyCheckIns:"Legacy NCHSM data · not tenant-linked", overallCheckInCount:"Legacy NCHSM data · not tenant-linked",
       dashboardUrgentTickets:"Legacy NCHSM data · not tenant-linked", activeSessions:"Legacy NCHSM data · not tenant-linked",
-      totalCourses:"Legacy NCHSM data · not tenant-linked", totalResources:"Legacy NCHSM data · not tenant-linked",
-      dashboardTotalPrograms:"Legacy NCHSM data · not tenant-linked"
+      totalCourses:"Legacy NCHSM data · not consolidated across institutions",
+      totalResources:"Legacy NCHSM data · not consolidated across institutions",
+      dashboardTotalPrograms:"Legacy NCHSM data · not consolidated across institutions",
+      dashboardTotalUnits:"Legacy NCHSM catalogue · not consolidated across institutions",
+      dashboardPendingUnitReg:"Legacy NCHSM registrations · not consolidated across institutions",
+      dashboardUpcomingExams:"Legacy NCHSM exam data · not consolidated across institutions",
+      dashboardPendingMessages:"Legacy NCHSM messages · not consolidated across institutions",
+      dashboardLecturersCount:"Legacy NCHSM staff data · not consolidated across institutions",
+      dashboardAttendanceToday:"Legacy NCHSM attendance · not consolidated across institutions",
+      dashboardTotalSessions:"Legacy NCHSM sessions · not consolidated across institutions",
+      totalStaffCount:"Legacy NCHSM staff data · not consolidated across institutions",
+      totalStaffCountDisplay:"Legacy NCHSM staff data · not consolidated across institutions",
+      krchnCountDisplay:"Legacy NCHSM programme data · not consolidated across institutions",
+      tvetCountDisplay:"Legacy NCHSM programme data · not consolidated across institutions",
+      statsKrchnCount:"Legacy NCHSM programme data · not consolidated across institutions",
+      statsTvetCount:"Legacy NCHSM programme data · not consolidated across institutions",
+      statsProgramCount:"Legacy NCHSM programme data · not consolidated across institutions",
+      activeProgramsCount:"Legacy NCHSM programme data · not consolidated across institutions",
+      inactiveProgramsCount:"Legacy NCHSM programme data · not consolidated across institutions",
+      totalIntakesCount:"Legacy NCHSM intake data · not consolidated across institutions",
+      totalBlocksCount:"Legacy NCHSM block data · not consolidated across institutions"
     };
     Object.entries(labels).forEach(([id,label]) => {
       const el=$(id); const sub=el?.closest(".dashboard-card")?.querySelector(".minor-data");
