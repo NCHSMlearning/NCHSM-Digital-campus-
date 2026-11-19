@@ -8,7 +8,7 @@
   const $ = (id) => document.getElementById(id);
   const db = () => window.sb || window.supabaseClient || window.supabase || null;
   const fmt = (n) => Number(n || 0).toLocaleString("en-KE");
-  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false, metricLock: null, legacyTextSnapshot: {} };
+  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false, metricLock: null, legacyTextSnapshot: {}, access: { platformAdmin: false, userId: null, institutionId: null } };
 
   const metricDefs = [
     ["institutions","Registered institutions","0","All registered tenants","fa-building","#0f766e","#f0fdfa"],
@@ -188,12 +188,30 @@
     if (!client?.auth || typeof client.from !== "function") throw new Error("Database session is not available.");
     const auth = await client.auth.getUser();
     if (auth.error || !auth.data?.user) throw new Error("Please sign in again.");
-    const profile = await client.from("consolidated_user_profiles_table")
-      .select("role").eq("user_id",auth.data.user.id).limit(1).maybeSingle();
+    const userId = auth.data.user.id;
+    const [profile,platform] = await Promise.all([
+      client.from("consolidated_user_profiles_table").select("role,status,login_enabled")
+        .eq("user_id",userId).limit(1).maybeSingle(),
+      client.rpc("is_current_user_superadmin")
+    ]);
     if (profile.error) throw profile.error;
-    if (!["superadmin","super_admin"].includes(String(profile.data?.role || "").toLowerCase())) {
-      throw new Error("Super Admin access is required.");
+    if (platform.error) throw platform.error;
+    const platformAdmin = platform.data === true;
+    if (platformAdmin) {
+      state.access = { platformAdmin:true, userId, institutionId:null };
+      return client;
     }
+    const memberships = await client.from("institution_users")
+      .select("institution_id,role,status").eq("user_id",userId).eq("status","active");
+    if (memberships.error) throw memberships.error;
+    const adminMemberships = (memberships.data || []).filter(row =>
+      String(row.role || "").toLowerCase() === "institution_admin");
+    if (String(profile.data?.role || "").toLowerCase() !== "institution_admin" ||
+        !["active","approved"].includes(String(profile.data?.status || "").toLowerCase()) ||
+        profile.data?.login_enabled === false || adminMemberships.length !== 1) {
+      throw new Error("This account is not assigned as an active institution administrator. Contact the Campus Nexus Platform Super Admin.");
+    }
+    state.access = { platformAdmin:false, userId, institutionId:adminMemberships[0].institution_id };
     return client;
   }
 
@@ -201,11 +219,14 @@
     const [institutions,members,modules,subscriptions,audits] = await Promise.all([
       client.from("institutions").select("id,name,short_code,status,onboarding_status").order("name"),
       client.from("institution_users").select("id,institution_id,user_id,role,status"),
-      client.from("institution_modules").select("id,institution_id,enabled"),
+      client.from("institution_modules").select("id,institution_id,enabled,module_key"),
       client.from("institution_subscriptions").select("id,institution_id,plan_name,amount,currency,status"),
       client.from("platform_audit_logs").select("id,institution_id")
     ]);
-    [institutions,members,modules,subscriptions,audits].forEach(result => { if(result.error) throw result.error; });
+    [institutions,members,modules].forEach(result => { if(result.error) throw result.error; });
+    if(state.access.platformAdmin && (subscriptions.error || audits.error)) throw (subscriptions.error || audits.error);
+    const safeSubscriptions = subscriptions.error ? [] : (subscriptions.data || []);
+    const safeAudits = audits.error ? [] : (audits.data || []);
     state.institutions = institutions.data || [];
     state.moduleMap = {};
     (modules.data || []).forEach(row => {
@@ -219,8 +240,8 @@
     setPlatform("pending",fmt(rows.filter(x=>x.status!=="active"&&x.status!=="suspended").length),"Onboarding / status pending");
     setPlatform("members",fmt((members.data||[]).length),"Membership records");
     setPlatform("modules",fmt((modules.data||[]).filter(x=>x.enabled).length),"Configured service modules");
-    setPlatform("subscriptions",fmt((subscriptions.data||[]).length),"Billing configuration records");
-    setPlatform("audits",fmt((audits.data||[]).length),"Recorded platform actions");
+    setPlatform("subscriptions",fmt(safeSubscriptions.length),state.access.platformAdmin?"Billing configuration records":"Platform billing is managed centrally");
+    setPlatform("audits",fmt(safeAudits.length),state.access.platformAdmin?"Recorded platform actions":"Platform audit feed is restricted to the central administrator");
     const select=$("cnGlobalInstitutionFilter");
     if(select){
       const live=select.value||"all";
@@ -234,7 +255,7 @@
       select.value=rows.some(x=>x.id===current)?current:"all";
       try{localStorage.setItem(SCOPE_KEY,select.value);}catch(_){}
     }
-    return {members:members.data||[],modules:modules.data||[],subscriptions:subscriptions.data||[],audits:audits.data||[]};
+    return {members:members.data||[],modules:modules.data||[],subscriptions:safeSubscriptions,audits:safeAudits};
   }
 
 
@@ -707,7 +728,33 @@
     try{
       const client=await getAdminDb();
       const platform=await loadPlatform(client);
-      const selected=$("cnGlobalInstitutionFilter")?.value||"all";
+      const institutionSelect=$("cnGlobalInstitutionFilter");
+      if(!state.access.platformAdmin){
+        const own=state.institutions.find(x=>x.id===state.access.institutionId);
+        if(!own) throw new Error("Your assigned institution is unavailable or suspended. Contact the Campus Nexus Platform Super Admin.");
+        if(institutionSelect){institutionSelect.value=own.id;institutionSelect.disabled=true;}
+        const selectorWrap=institutionSelect?.closest(".cn-global-select-wrap");
+        if(selectorWrap) selectorWrap.style.display="none";
+        const manage=$("cnPlatformOverview")?.querySelector(".cn-global-manage");
+        if(manage) manage.style.display="none";
+        document.querySelectorAll(".cn-platform-card").forEach(card=>card.style.display="none");
+        const eyebrow=$("cnPlatformOverview")?.querySelector(".cn-global-eyebrow");
+        if(eyebrow) eyebrow.textContent="CAMPUS NEXUS · INSTITUTION OPERATIONS";
+        document.querySelectorAll("#sidebar [onclick*=\"showTab('institutions')\"],#sidebar [onclick*='showTab(\\"institutions\\")'],#sidebar [data-tab='institutions']").forEach(item=>item.style.display="none");
+        const navItems=[...document.querySelectorAll("#sidebar a,#sidebar button")];
+        navItems.forEach(item=>{
+          const label=(item.textContent||"").trim().toLowerCase();
+          if(/platform audit|system-wide audit|manage institutions|institution management/.test(label)) item.style.display="none";
+        });
+      } else {
+        if(institutionSelect) institutionSelect.disabled=false;
+        const selectorWrap=institutionSelect?.closest(".cn-global-select-wrap");
+        if(selectorWrap) selectorWrap.style.display="";
+        const manage=$("cnPlatformOverview")?.querySelector(".cn-global-manage");
+        if(manage) manage.style.display="";
+        document.querySelectorAll(".cn-platform-card").forEach(card=>card.style.display="");
+      }
+      const selected=state.access.platformAdmin?($("cnGlobalInstitutionFilter")?.value||"all"):state.access.institutionId;
       const institution=state.institutions.find(x=>x.id===selected);
       updateScopeText(institution||null);
       publishScope();
@@ -732,6 +779,10 @@
   }
 
   function handleInstitutionChange(event) {
+    if(!state.access.platformAdmin && state.access.institutionId){
+      if(event?.target) event.target.value=state.access.institutionId;
+      return;
+    }
     const selected=event?.target?.value || "all";
     try { localStorage.setItem(SCOPE_KEY,selected); } catch(_) {}
     publishScope();
