@@ -754,6 +754,11 @@
           const childLinks=[...group.querySelectorAll("[data-tab]")];
           if(childLinks.length && childLinks.every(link=>(link.closest("li")||link).style.display==="none")) group.style.display="none";
         });
+        sidebar?.querySelectorAll(".nav-section").forEach(section=>{
+          const next=section.nextElementSibling;
+          if(next && next.style.display==="none") section.style.display="none";
+          if((section.textContent||"").toLowerCase().includes("campus nexus platform")) section.style.display="none";
+        });
                 const navItems=[...document.querySelectorAll("#sidebar a,#sidebar button")];
         navItems.forEach(item=>{
           const label=(item.textContent||"").trim().toLowerCase();
