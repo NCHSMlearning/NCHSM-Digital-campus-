@@ -1,0 +1,50 @@
+/* NCHSM Super Admin responsive repair — 2026-11-19 */
+:root{--nchsm-navy:#082f49;--nchsm-teal:#0f766e;--nchsm-gold:#eab54b;--nchsm-line:#dbe4ea}
+html{width:100%;max-width:100%;overflow-x:hidden;scroll-behavior:smooth}
+body{width:100%;max-width:100%;overflow-x:hidden}
+*,*::before,*::after{box-sizing:border-box}
+img,video,canvas,svg{max-width:100%}
+.main,.main-content,#main-content,.content-area,.tab-content,.tab-pane,.dashboard-content{min-width:0;max-width:100%}
+.main{overflow-x:clip}
+header,.page-header,.section-header{min-width:0;max-width:100%;flex-wrap:wrap;gap:12px}
+.cards,.health-cards,.analytics-grid,.scheduled-tasks,.quick-action-buttons{min-width:0}
+.cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.analytics-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+input,select,textarea,button{max-width:100%;font:inherit}
+input,select,textarea{min-width:0}
+button,a{touch-action:manipulation}
+.table-responsive,.nchsm-table-scroll{display:block;width:100%;max-width:100%;overflow-x:auto!important;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#94a3b8 #edf2f7}
+.table-responsive>table,.nchsm-table-scroll>table{width:max-content;min-width:100%;max-width:none;border-collapse:separate;border-spacing:0}
+.table-responsive th,.table-responsive td,.nchsm-table-scroll th,.nchsm-table-scroll td{white-space:nowrap}
+.table-responsive table th,.nchsm-table-scroll table th{position:sticky;top:0;z-index:2}
+table{max-width:100%}
+@media(min-width:769px){
+ #sidebar{width:var(--admin-sidebar-width,280px);max-width:32vw}
+ .main{margin-left:var(--admin-sidebar-width,280px)!important;width:auto!important;max-width:none!important;min-width:0!important}
+}
+@media(max-width:768px){
+ html,body{width:100%;min-width:0;overflow-x:hidden}
+ .container{display:block!important;width:100%!important;max-width:100%!important;min-height:100dvh}
+ #sidebar,.sidebar{left:calc(-1 * min(280px,86vw))!important;width:min(280px,86vw)!important;max-width:86vw!important;height:100dvh!important;z-index:1200!important}
+ #sidebar.active,.sidebar.active{left:0!important}
+ .main,.main-content,#main-content{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;padding:68px 14px 28px!important;overflow-x:clip!important}
+ .mobile-nav-toggle{display:flex!important;align-items:center;justify-content:center;position:fixed!important;top:12px;left:12px;z-index:1300;width:44px;height:44px;border:1px solid #dbe4ea;border-radius:12px;background:#fff;box-shadow:0 4px 14px #0f172a1c}
+ header h1,.main h1{font-size:clamp(1.35rem,5vw,1.9rem)!important;line-height:1.2}
+ .cards,.health-cards,.analytics-grid,.scheduled-tasks{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+ .card,.health-card,.analytics-card,.task-item{min-width:0;padding:14px!important}
+ .data{font-size:clamp(20px,6vw,28px)!important}
+ .toolbar,.filter-bar,.inline-form{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%;padding:12px!important}
+ .toolbar>* ,.filter-bar>* ,.inline-form>*{width:100%;max-width:100%}
+ .unit-form-row{grid-template-columns:minmax(0,1fr)!important}
+ .modal{padding:12px;align-items:flex-end}
+ .modal-content{width:100%!important;max-width:100%!important;max-height:88dvh!important;border-radius:16px 16px 10px 10px}
+ .api-key-item{align-items:flex-start;flex-direction:column;gap:10px}
+ .table-responsive,.nchsm-table-scroll{margin:0 0 14px;border:1px solid var(--nchsm-line);border-radius:10px;background:#fff}
+ table{border-radius:0;overflow:visible}
+ th,td{padding:10px 12px;font-size:12px}
+}
+@media(max-width:420px){
+ .cards,.health-cards,.analytics-grid,.scheduled-tasks{grid-template-columns:minmax(0,1fr)!important}
+ .main,.main-content,#main-content{padding-left:11px!important;padding-right:11px!important}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
