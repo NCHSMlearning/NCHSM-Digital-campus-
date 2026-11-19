@@ -355,6 +355,8 @@
     const canvas=$(canvasId);
     if(!canvas || typeof window.Chart!=="function") return;
     if(dashboardCharts[canvasId]) dashboardCharts[canvasId].destroy();
+    const existing=window.Chart.getChart?.(canvas);
+    if(existing && existing!==dashboardCharts[canvasId]) existing.destroy();
     const ctx=canvas.getContext("2d");
     if(!ctx) return;
     dashboardCharts[canvasId]=new window.Chart(ctx,{
@@ -364,7 +366,7 @@
     });
   }
 
-  function renderTenantCharts(profiles,activityRows,students,krchn,tvet) {
+  function renderTenantCharts(profiles,activityRows,students,krchn,tvet,programRows) {
     const learnerRows=(profiles||[]).filter(p=>String(p.role||"").toLowerCase()==="student");
     const blockCounts={};
     learnerRows.forEach(p=>{const block=String(p.block||"Not assigned").trim()||"Not assigned";blockCounts[block]=(blockCounts[block]||0)+1;});
@@ -378,10 +380,31 @@
       else genderCounts["Other / not specified"]++;
     });
     drawDashboardChart("genderDistributionChart","doughnut",Object.keys(genderCounts),Object.values(genderCounts),"Students");
-    const other=Math.max(0,Number(students||0)-Number(krchn||0)-Number(tvet||0));
-    drawDashboardChart("programBreakdownChart","doughnut",["KRCHN","TVET","Unclassified"],[Number(krchn||0),Number(tvet||0),other],"Students");
-    const now=Date.now(),hours=Array.from({length:24},(_,i)=>i);
-    const counts=hours.map(h=>({label:new Date(now-(23-h)*3600000).toLocaleTimeString("en-KE",{hour:"2-digit",timeZone:"Africa/Nairobi"}),count:0}));
+    const catalog=new Map((programRows||[]).map(p=>[String(p.program_code||"").trim().toUpperCase(),p]));
+    const byProgram={},categoryCounts={KRCHN:0,TVET:0,Unclassified:0};
+    learnerRows.forEach(p=>{
+      const code=String(p.program||"").trim().toUpperCase()||"Not assigned";
+      const meta=catalog.get(code);
+      const type=String(p.program_type||meta?.category||meta?.program_type||"").toLowerCase();
+      const category=type.includes("krchn")||code==="KRCHN"?"KRCHN":(type.includes("tvet")||!!meta||type.includes("artisan")||type.includes("certificate")||type.includes("diploma"))?"TVET":"Unclassified";
+      categoryCounts[category]++;
+      if(!byProgram[code]) byProgram[code]={type:category,total:0,male:0,female:0};
+      byProgram[code].total++;
+      const gender=String(p.gender||"").trim().toLowerCase();
+      if(["m","male"].includes(gender)) byProgram[code].male++;
+      if(["f","female"].includes(gender)) byProgram[code].female++;
+    });
+    drawDashboardChart("programBreakdownChart","doughnut",Object.keys(categoryCounts),Object.values(categoryCounts),"Students");
+    const tbody=$("statsProgramBreakdown");
+    if(tbody){
+      const rows=Object.entries(byProgram).sort((a,b)=>b[1].total-a[1].total);
+      const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      tbody.innerHTML=rows.length?rows.map(([code,item])=>{
+        const ratio=item.male+item.female?Math.round(item.male/(item.male+item.female)*100)+":"+Math.round(item.female/(item.male+item.female)*100):"—";
+        return '<tr><td style="padding:9px 12px;border-bottom:1px solid #e5e7eb">'+esc(code)+'</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #e5e7eb">'+esc(item.type)+'</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #e5e7eb">'+item.total+'</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #e5e7eb">'+item.male+'</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #e5e7eb">'+item.female+'</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #e5e7eb">'+ratio+'</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #e5e7eb">'+(students?Math.round(item.total/students*100):0)+'%</td></tr>';
+      }).join(""):'<tr><td colspan="7" style="padding:18px;text-align:center;color:#94a3b8">No student programme data available.</td></tr>';
+    }
+    const now=Date.now(),counts=Array.from({length:24},(_,h)=>({label:new Date(now-(23-h)*3600000).toLocaleTimeString("en-KE",{hour:"2-digit",timeZone:"Africa/Nairobi"}),count:0}));
     (activityRows||[]).forEach(row=>{
       const stamp=Date.parse(row.created_at||"");
       if(!Number.isFinite(stamp)) return;
@@ -389,6 +412,20 @@
       if(age>=0&&age<24) counts[23-age].count++;
     });
     drawDashboardChart("performanceChart","line",counts.map(x=>x.label),counts.map(x=>x.count),"Audit events");
+    return categoryCounts;
+  }
+
+
+  function renderDashboardBirthdays(profiles) {
+    const root=$("birthdayStudentsList");
+    if(!root) return;
+    const now=new Date(),month=now.getMonth();
+    const upcoming=(profiles||[]).filter(p=>String(p.role||"").toLowerCase()==="student"&&p.date_of_birth)
+      .map(p=>({name:p.full_name||"Student",program:p.program||"",dob:new Date(p.date_of_birth)}))
+      .filter(p=>!Number.isNaN(p.dob.getTime())&&p.dob.getMonth()===month)
+      .sort((a,b)=>a.dob.getDate()-b.dob.getDate());
+    const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    root.innerHTML=upcoming.length?upcoming.map(p=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 4px;border-bottom:1px solid #e5e7eb"><strong style="font-size:12px;color:#0A3D62">'+esc(p.name)+'</strong><span style="font-size:11px;color:#64748b">'+esc(p.program)+' · '+p.dob.getDate()+'</span></div>').join(""):'<p style="color:#94a3b8;font-size:12px">No student birthdays recorded for this month in the selected scope.</p>';
   }
 
   function renderDashboardActivity(rows,scopeLabel) {
@@ -418,7 +455,7 @@
   async function applyInstitutionScope(client,institution,platform) {
     const id=institution?.id||null;
     const profileQuery=scopeQuery(client.from("consolidated_user_profiles_table")
-      .select("id,user_id,role,status,program,program_type,block,gender,created_at",{count:"exact"}),id).limit(2000);
+      .select("id,user_id,role,status,program,program_type,block,gender,created_at,full_name,admission_number,date_of_birth",{count:"exact"}),id).limit(2000);
     const profileResult=await profileQuery;
     if(profileResult.error) throw profileResult.error;
     const members=profileResult.data||[];
@@ -465,6 +502,7 @@
     add("weeklySessions",scopeQuery(client.from("scheduled_sessions").select("id",{count:"exact",head:true})
       .gte("session_date",weekStartDate).lt("session_date",weekEndDate),id));
     add("programs",countQuery("programs"));
+    add("programRows",scopeQuery(client.from("programs").select("program_code,program_name,category,program_type,status"),id));
     add("activePrograms",scopeQuery(client.from("programs").select("id",{count:"exact",head:true}).ilike("status","active"),id));
     add("inactivePrograms",scopeQuery(client.from("programs").select("id",{count:"exact",head:true}).not("status","ilike","active"),id));
     add("units",countQuery("units_catalog"));
@@ -487,6 +525,9 @@
     }
 
     const students=studentCount.count||0;
+    const programCategoryCounts=renderTenantCharts(members,results.activity?.data||[],students,krchnCount.count||0,tvetCount.count||0,results.programRows?.data||[]);
+    const effectiveKrchn=programCategoryCounts.KRCHN||0;
+    const effectiveTvet=programCategoryCounts.TVET||0;
     const todayPresent=results.todayAttendance?.unavailable?null:new Set((results.todayAttendance?.data||[]).map(row=>row.student_id).filter(Boolean)).size;
     const attendancePercent=todayPresent===null?null:(students?Math.min(100,Math.round(todayPresent/students*100)):0);
     const scopeLabel=institution?.name||"all institutions";
@@ -520,13 +561,15 @@
       dashboardSystemAlerts:{value:countValue("systemAlerts"),detail:"Unread high-priority proctoring alerts",unavailable:!!results.systemAlerts?.unavailable},
       totalStaffCount:{value:fmt(staffCount.count||0),detail:"Staff profiles · excludes learners and platform super admins"},
       totalStaffCountDisplay:{value:fmt(staffCount.count||0),detail:"Staff profiles in scope"},
-      krchnCountDisplay:{value:fmt(krchnCount.count||0),detail:"KRCHN profiles by programme type"},
-      tvetCountDisplay:{value:fmt(tvetCount.count||0),detail:"TVET profiles by programme type"},
+      krchnCountDisplay:{value:fmt(effectiveKrchn),detail:"KRCHN students identified by programme records"},
+      tvetCountDisplay:{value:fmt(effectiveTvet),detail:"TVET students identified by programme records"},
       statsTotalStudents:{value:fmt(students),detail:"Students in scope"},
-      statsKrchnCount:{value:fmt(krchnCount.count||0),detail:"KRCHN student profiles"},
-      statsTvetCount:{value:fmt(tvetCount.count||0),detail:"TVET student profiles"},
+      statsKrchnCount:{value:fmt(effectiveKrchn),detail:"KRCHN student profiles"},
+      statsTvetCount:{value:fmt(effectiveTvet),detail:"TVET student profiles"},
       statsMaleTotal:{value:fmt(maleCount.count||0),detail:"Student profiles recorded as male"},
       statsFemaleTotal:{value:fmt(femaleCount.count||0),detail:"Student profiles recorded as female"},
+      statsMalePercent:{value:(students?Math.round((maleCount.count||0)/students*100):0)+"%",detail:"Male share of all students"},
+      statsFemalePercent:{value:(students?Math.round((femaleCount.count||0)/students*100):0)+"%",detail:"Female share of all students"},
       statsProgramCount:{value:countValue("programs"),detail:"Programme catalogue entries"},
       activeProgramsCount:{value:countValue("activePrograms"),detail:"Active programme records",unavailable:!!results.activePrograms?.unavailable},
       inactiveProgramsCount:{value:countValue("inactivePrograms"),detail:"Inactive programme records",unavailable:!!results.inactivePrograms?.unavailable},
@@ -556,7 +599,7 @@
 
     const activityRows=results.activity?.unavailable?[]:(results.activity?.data||[]);
     renderDashboardActivity(activityRows,scopeLabel);
-    renderTenantCharts(members,activityRows,students,krchnCount.count||0,tvetCount.count||0);
+    renderDashboardBirthdays(members);
 
     if(institution){
       setPlatform("institutions","1","Selected institution");
