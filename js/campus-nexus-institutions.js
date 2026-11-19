@@ -85,6 +85,23 @@
     ids.forEach((id,index) => { if ($(id)) $(id).value = colors[index] || defaults[index]; });
   }
 
+  function setPortalMode(mode) {
+    const selected = mode === "custom_website" ? "custom_website" : "campus_nexus";
+    const hidden = $("cnInstitutionPortalMode");
+    if (hidden) hidden.value = selected;
+    document.querySelectorAll('input[name="cnInstitutionPortalModeChoice"]').forEach(input => {
+      input.checked = input.value === selected;
+    });
+    const custom = selected === "custom_website";
+    $("cnCustomLoginWrap")?.classList.toggle("is-visible", custom);
+    if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").required = custom;
+    const sharedLogin = $("cnSharedLoginPreview");
+    const sharedRegistration = $("cnSharedRegistrationPreview");
+    const schoolCode = String($("cnInstitutionSchoolCode")?.value || "101").trim();
+    if (sharedLogin) sharedLogin.textContent = "https://campusnexus.co.ke/login";
+    if (sharedRegistration) sharedRegistration.textContent = "https://campusnexus.co.ke/register?school_code=" + (/^[0-9]{3}$/.test(schoolCode) ? schoolCode : "101");
+  }
+
   function resetForm() {
     editingId = null;
     $("cnInstitutionForm")?.reset();
@@ -92,7 +109,7 @@
     if ($("cnInstitutionType")) $("cnInstitutionType").value = "college";
     if ($("cnInstitutionAmount")) $("cnInstitutionAmount").value = "5000";
     applyBrandColors();
-    if ($("cnInstitutionPortalMode")) $("cnInstitutionPortalMode").value = "campus_nexus";
+    setPortalMode("campus_nexus");
     if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").value = "";
     if ($("cnInstitutionAdminPortal")) $("cnInstitutionAdminPortal").value = "";
     renderModuleOptions(MODULES.map(([key]) => key));
@@ -120,7 +137,7 @@
     $("cnInstitutionPlan").value = item._subscription?.plan_name || "Starter";
     $("cnInstitutionCycle").value = item._subscription?.billing_cycle || "monthly";
     $("cnInstitutionAdmin").value = item.admin_email || "";
-    $("cnInstitutionPortalMode")?.dispatchEvent(new Event("change"));
+    setPortalMode(item.portal_mode || "campus_nexus");
     renderModuleOptions(item._modules || []);
     $("cnInstitutionSave").textContent = "Update institution";
     $("cnInstitutionFormTitle").textContent = "Edit institution";
@@ -216,15 +233,14 @@
       const sub = subscriptions.find(x => x.institution_id === i.id);
       const member = memberships.find(x => x.institution_id === i.id && x.status === "active");
       const registration = registrationLinks.find(x => x.institution_id === i.id);
-      const host = String(i.portal_domain || "").trim().replace(/^https?:\/\//i,"").replace(/\/$/,"");
-      const registrationUrl = i.portal_mode === "custom_website" && i.custom_login_url
-        ? i.custom_login_url
-        : host
-          ? "https://" + host + "/register"
-          : registration ? window.location.origin + "/registration.html?institution_code=" + encodeURIComponent(registration.code) : "";
+      const sharedLoginUrl = "https://campusnexus.co.ke/login";
+      const sharedRegistrationUrl = "https://campusnexus.co.ke/register?school_code=" + encodeURIComponent(String(i.school_code || ""));
+      const isCustomPortal = i.portal_mode === "custom_website" && Boolean(i.custom_login_url);
+      const loginUrl = isCustomPortal ? i.custom_login_url : sharedLoginUrl;
+      const registrationUrl = isCustomPortal ? i.custom_login_url : sharedRegistrationUrl;
       return {...i, _modules:modules.filter(x => x.institution_id === i.id && x.enabled).map(x => x.module_key),
         _subscription:sub || null, _subscriptionId:sub?.id || null, _adminUserId:member?.user_id || null,
-        _registrationUrl:registrationUrl, _registrationCode:registration?.code || null};
+        _loginUrl:loginUrl, _registrationUrl:registrationUrl, _registrationCode:registration?.code || null};
     });
     renderRows();
   }
@@ -261,8 +277,8 @@
       primary_color:$("cnInstitutionColor").value,
       secondary_color:$("cnInstitutionAccent").value,
       brand_colors:readBrandColors(),
-      portal_mode:$("cnInstitutionPortalMode").value,
-      custom_login_url:$("cnInstitutionPortalMode").value === "custom_website" ? ($("cnInstitutionCustomLogin").value.trim() || null) : null,
+      portal_mode:portalMode,
+      custom_login_url:portalMode === "custom_website" ? customLoginUrl : null,
       administrator_portal_url:$("cnInstitutionAdminPortal").value.trim() || null,
       status:$("cnInstitutionStatus").value,
       onboarding_status:"configuring",
@@ -270,6 +286,11 @@
     };
     if ($("cnInstitutionPortalMode").value === "custom_website" && !$("cnInstitutionCustomLogin").value.trim()) {
       return notify("Enter the institution's custom login or registration URL.", "error");
+    }
+    const portalMode = $("cnInstitutionPortalMode")?.value || "campus_nexus";
+    const customLoginUrl = $("cnInstitutionCustomLogin")?.value.trim() || "";
+    if (portalMode === "custom_website" && (!/^https:\/\//i.test(customLoginUrl) || !/^https:\/\//i.test(customLoginUrl))) {
+      return notify("Enter a valid HTTPS login URL for the institution's own portal.", "error");
     }
     const enabledModules = [...document.querySelectorAll('input[name="cnModule"]:checked')].map(x => x.value);
     setBusy(true);
@@ -353,12 +374,11 @@
     $("cnInstitutionSlug").addEventListener("input",e => e.target.dataset.edited = "1");
     $("cnInstitutionCode").addEventListener("input",e => e.target.dataset.edited = "1");
     $("cnInstitutionRefresh").addEventListener("click",() => loadInstitutions().catch(e => notify(e.message,"error")));
-    $("cnInstitutionPortalMode")?.addEventListener("change", () => {
-      const custom = $("cnInstitutionPortalMode").value === "custom_website";
-      $("cnCustomLoginWrap")?.classList.toggle("is-visible", custom);
-      if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").required = custom;
+    document.querySelectorAll('input[name="cnInstitutionPortalModeChoice"]').forEach(input => {
+      input.addEventListener("change", () => setPortalMode(input.value));
     });
-    $("cnInstitutionPortalMode")?.dispatchEvent(new Event("change"));
+    $("cnInstitutionCode")?.addEventListener("input", () => setPortalMode($("cnInstitutionPortalMode")?.value));
+    setPortalMode("campus_nexus");
     try {
       await verifyPlatformAdmin();
       await loadInstitutions();
