@@ -740,7 +740,21 @@
         document.querySelectorAll(".cn-platform-card").forEach(card=>card.style.display="none");
         const eyebrow=$("cnPlatformOverview")?.querySelector(".cn-global-eyebrow");
         if(eyebrow) eyebrow.textContent="CAMPUS NEXUS · INSTITUTION OPERATIONS";
-        const navItems=[...document.querySelectorAll("#sidebar a,#sidebar button")];
+        const sidebar=document.getElementById("sidebar");
+        const roleBadge=sidebar?.querySelector(".sidebar-header span");
+        if(roleBadge) roleBadge.textContent="Institution Administrator";
+        const restrictedTabs=new Set(["institutions","admin-approvals","system-health","data-visualization","task-scheduler","bulk-operations","api-management","quick-actions","welcome-editor","error-tracking","audit","security"]);
+        sidebar?.querySelectorAll("[data-tab]").forEach(item=>{
+          if(restrictedTabs.has(String(item.dataset.tab||""))) {
+            const row=item.closest("li")||item;
+            row.style.display="none";
+          }
+        });
+        sidebar?.querySelectorAll("li.nav-dropdown").forEach(group=>{
+          const childLinks=[...group.querySelectorAll("[data-tab]")];
+          if(childLinks.length && childLinks.every(link=>(link.closest("li")||link).style.display==="none")) group.style.display="none";
+        });
+                const navItems=[...document.querySelectorAll("#sidebar a,#sidebar button")];
         navItems.forEach(item=>{
           const label=(item.textContent||"").trim().toLowerCase();
           const click=(item.getAttribute("onclick")||"").toLowerCase();
