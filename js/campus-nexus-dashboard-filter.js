@@ -8,7 +8,7 @@
   const $ = (id) => document.getElementById(id);
   const db = () => window.sb || window.supabaseClient || window.supabase || null;
   const fmt = (n) => Number(n || 0).toLocaleString("en-KE");
-  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false, metricLock: null };
+  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false, metricLock: null, legacyTextSnapshot: {} };
 
   const metricDefs = [
     ["institutions","Registered institutions","0","All registered tenants","fa-building","#0f766e","#f0fdfa"],
@@ -72,6 +72,9 @@
         state.snapshot[id]={value:el.textContent,detail:detail?.textContent||null};
       }
     });
+    ["userGrowth","pendingGrowth","studentGrowth","ticketGrowth"].forEach(id=>{
+      const el=$(id); if(el) state.legacyTextSnapshot[id]=el.textContent;
+    });
   }
 
   function setMetric(id,value,detail) {
@@ -99,7 +102,7 @@
       const valueEl = $(id);
       if (!valueEl) return;
       const card = valueEl.closest(".dashboard-card");
-      const detailEl = card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node => node !== valueEl);
+      const detailEl = entry.textOnly ? null : (card?.querySelector(".minor-data") || [...(card?.querySelectorAll("p") || [])].find(node => node !== valueEl));
       const apply = () => {
         if (valueEl.textContent !== String(entry.value)) valueEl.textContent = String(entry.value);
         if (detailEl && entry.detail && detailEl.textContent !== entry.detail) detailEl.textContent = entry.detail;
@@ -173,6 +176,7 @@
       totalIntakesCount:"Legacy NCHSM intake data · not consolidated across institutions",
       totalBlocksCount:"Legacy NCHSM block data · not consolidated across institutions"
     };
+    Object.entries(state.legacyTextSnapshot||{}).forEach(([id,value])=>{const el=$(id);if(el)el.textContent=value;});
     Object.entries(labels).forEach(([id,label]) => {
       const el=$(id); const sub=el?.closest(".dashboard-card")?.querySelector(".minor-data");
       if(sub) sub.textContent=label;
@@ -433,7 +437,11 @@
       statsKrchnCount:{value:fmt(krchnCount.count||0),detail:"KRCHN student profiles"},
       statsTvetCount:{value:fmt(tvetCount.count||0),detail:"TVET student profiles"},
       statsMaleTotal:{value:fmt(maleCount.count||0),detail:"Student profiles recorded as male"},
-      statsFemaleTotal:{value:fmt(femaleCount.count||0),detail:"Student profiles recorded as female"}
+      statsFemaleTotal:{value:fmt(femaleCount.count||0),detail:"Student profiles recorded as female"},
+      userGrowth:{value:"—",detail:null,textOnly:true},
+      pendingGrowth:{value:"—",detail:null,textOnly:true},
+      studentGrowth:{value:"—",detail:null,textOnly:true},
+      ticketGrowth:{value:"—",detail:null,textOnly:true}
     };
     Object.entries(metricEntries).forEach(([metric,entry])=>setMetric(metric,entry.value,entry.detail));
 
@@ -462,7 +470,8 @@
       ["totalIntakesCount","Programme intakes have no institution ownership field"],
       ["totalBlocksCount","Programme blocks have no institution ownership field"],
       ["statsProgramCount","Programme master has no institution ownership field"],
-      ["dataIntegrityScore","No verified institution-specific integrity calculation is configured"]
+      ["dataIntegrityScore","No verified institution-specific integrity calculation is configured"],
+      ["systemUptime","No verified uptime monitoring source connected"]
     ];
     unavailableMetrics.forEach(([metric,reason])=>{
       metricEntries[metric]={value:"—",detail:reason,unavailable:true};
