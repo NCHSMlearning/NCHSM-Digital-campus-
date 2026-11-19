@@ -33,11 +33,10 @@
     const { data: authData, error: authError } = await sb.auth.getUser();
     if (authError || !authData?.user) throw new Error("Your secure session could not be verified. Please sign in again.");
     currentUser = authData.user;
-    const { data: profile, error } = await sb.from("consolidated_user_profiles_table")
-      .select("role").eq("user_id", currentUser.id).limit(1).maybeSingle();
+    const { data: isPlatformAdmin, error } = await sb.rpc("is_current_user_superadmin");
     if (error) throw error;
-    if (!["superadmin", "super_admin"].includes(String(profile?.role || "").toLowerCase())) {
-      throw new Error("Access denied. Institution management is restricted to Campus Nexus platform administrators.");
+    if (isPlatformAdmin !== true) {
+      throw new Error("Access denied. Institution management is restricted to the central Campus Nexus Platform Super Admin.");
     }
   }
 
