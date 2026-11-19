@@ -43,6 +43,20 @@
     if (button) { button.disabled = busy; button.textContent = busy ? "Saving…" : (editingId ? "Update institution" : "Add institution"); }
   };
 
+  function initializeLogoPicker() {
+    const picker = $("cnInstitutionLogoFile"), preview = $("cnInstitutionLogoPreview");
+    if (!picker || !preview || picker.dataset.bound === "1") return;
+    picker.dataset.bound = "1";
+    picker.addEventListener("change", () => {
+      const file = picker.files?.[0];
+      if (!file) return;
+      if (!["image/png","image/jpeg","image/webp","image/svg+xml"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+        picker.value = ""; notify("Choose a PNG, JPG, WEBP or SVG logo no larger than 2 MB.","error"); return;
+      }
+      preview.src = URL.createObjectURL(file); preview.hidden = false;
+    });
+  }
+
   async function verifyPlatformAdmin() {
     sb = window.sb || window.supabase;
     if (!sb?.auth) throw new Error("The authenticated Supabase client is not available. Reload the page and sign in again.");
@@ -112,6 +126,9 @@
     if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").value = "";
     if ($("cnInstitutionAdminPortal")) $("cnInstitutionAdminPortal").value = "";
     renderModuleOptions(MODULES.map(([key]) => key));
+    initializeLogoPicker();
+    if ($("cnInstitutionLogoFile")) $("cnInstitutionLogoFile").value = "";
+    if ($("cnInstitutionLogoPreview")) { $("cnInstitutionLogoPreview").hidden = true; $("cnInstitutionLogoPreview").removeAttribute("src"); }
     $("cnInstitutionSave").textContent = "Add institution";
     $("cnInstitutionFormTitle").textContent = "Register a new institution";
     $("cnInstitutionCancel").hidden = true;
@@ -124,6 +141,7 @@
       cnInstitutionType:item.institution_type, cnInstitutionCountry:item.country,
       cnInstitutionEmail:item.contact_email, cnInstitutionPhone:item.contact_phone,
       cnInstitutionWebsite:item.website_url, cnInstitutionLogo:item.logo_url,
+      cnInstitutionPhysicalAddress:item.physical_address, cnInstitutionPostalAddress:item.postal_address,
       cnInstitutionDomain:item.portal_domain, cnInstitutionAdmin:item.admin_email, cnInstitutionColor:item.primary_color,
       cnInstitutionAccent:item.secondary_color, cnInstitutionStatus:item.status,
       cnInstitutionPortalMode:item.portal_mode || "campus_nexus",
@@ -138,6 +156,9 @@
     $("cnInstitutionAdmin").value = item.admin_email || "";
     setPortalMode(item.portal_mode || "campus_nexus");
     renderModuleOptions(item._modules || []);
+    initializeLogoPicker();
+    if ($("cnInstitutionLogoPreview")) { $("cnInstitutionLogoPreview").src = item.logo_url || ""; $("cnInstitutionLogoPreview").hidden = !item.logo_url; }
+    if ($("cnInstitutionLogoFile")) $("cnInstitutionLogoFile").value = "";
     $("cnInstitutionSave").textContent = "Update institution";
     $("cnInstitutionFormTitle").textContent = "Edit institution";
     $("cnInstitutionCancel").hidden = false;
@@ -278,6 +299,8 @@
       contact_phone:$("cnInstitutionPhone").value.trim() || null,
       website_url:$("cnInstitutionWebsite").value.trim() || null,
       logo_url:$("cnInstitutionLogo").value.trim() || null,
+      physical_address:$("cnInstitutionPhysicalAddress")?.value.trim() || null,
+      postal_address:$("cnInstitutionPostalAddress")?.value.trim() || null,
       portal_domain:$("cnInstitutionDomain").value.trim() || null,
       primary_color:$("cnInstitutionColor").value,
       secondary_color:$("cnInstitutionAccent").value,
@@ -299,6 +322,20 @@
         ({data:saved,error} = await sb.from("institutions").insert(payload).select("*").single());
       }
       if (error) throw error;
+
+      const logoFile = $("cnInstitutionLogoFile")?.files?.[0];
+      if (logoFile) {
+        const allowed = ["image/png","image/jpeg","image/webp","image/svg+xml"];
+        if (!allowed.includes(logoFile.type) || logoFile.size > 2 * 1024 * 1024) throw new Error("Choose a PNG, JPG, WEBP or SVG logo no larger than 2 MB.");
+        const ext = ({"image/png":"png","image/jpeg":"jpg","image/webp":"webp","image/svg+xml":"svg"})[logoFile.type];
+        const objectPath = saved.id + "/logo-" + Date.now() + "." + ext;
+        const {error:uploadError} = await sb.storage.from("institution-logos").upload(objectPath,logoFile,{upsert:true,contentType:logoFile.type,cacheControl:"3600"});
+        if (uploadError) throw uploadError;
+        const {data:publicData} = sb.storage.from("institution-logos").getPublicUrl(objectPath);
+        const {error:logoUpdateError} = await sb.from("institutions").update({logo_url:publicData.publicUrl,logo_storage_path:objectPath,updated_at:new Date().toISOString()}).eq("id",saved.id);
+        if (logoUpdateError) throw logoUpdateError;
+        saved.logo_url = publicData.publicUrl;
+      }
 
       // Create an institution-specific, unguessable registration link.
       const {data:existingLinks,error:linkReadError} = await sb.from("institution_registration_links")
