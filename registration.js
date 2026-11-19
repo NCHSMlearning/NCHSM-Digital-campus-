@@ -252,6 +252,12 @@ function renderInstitutionContextBanner(context, form) {
     subtitle.textContent = 'Institution registration · School code: ' + context.school_code;
     subtitle.style.cssText = 'font-size:12px;color:#475569;';
     copy.append(title, subtitle);
+    [context.physical_address, context.postal_address].filter(Boolean).forEach(value => {
+        const address = document.createElement('span');
+        address.textContent = value;
+        address.style.cssText = 'font-size:12px;color:#64748b;';
+        copy.appendChild(address);
+    });
     banner.appendChild(copy);
 }
 
