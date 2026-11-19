@@ -8,7 +8,7 @@
   const $ = (id) => document.getElementById(id);
   const db = () => window.sb || window.supabaseClient || window.supabase || null;
   const fmt = (n) => Number(n || 0).toLocaleString("en-KE");
-  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false };
+  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false, metricLock: null };
 
   const metricDefs = [
     ["institutions","Registered institutions","0","All registered tenants","fa-building","#0f766e","#f0fdfa"],
@@ -80,6 +80,39 @@
       const sub = card?.querySelector(".minor-data");
       if (sub) sub.textContent = detail;
     }
+  }
+
+  function releaseScopedMetricLock() {
+    if (state.metricLock?.observer) state.metricLock.observer.disconnect();
+    state.metricLock = null;
+  }
+
+  // Older dashboard loaders can finish after the tenant query and overwrite
+  // these same DOM nodes with global NCHSM totals. Keep tenant-scoped values
+  // authoritative while an institution is selected.
+  function lockScopedMetrics(entries) {
+    releaseScopedMetricLock();
+    const targets = [];
+    Object.entries(entries).forEach(([id,entry]) => {
+      const valueEl = $(id);
+      if (!valueEl) return;
+      const card = valueEl.closest(".dashboard-card");
+      const detailEl = card?.querySelector(".minor-data");
+      const apply = () => {
+        if (valueEl.textContent !== String(entry.value)) valueEl.textContent = String(entry.value);
+        if (detailEl && entry.detail && detailEl.textContent !== entry.detail) detailEl.textContent = entry.detail;
+        card?.classList.remove("cn-scope-unavailable");
+      };
+      apply();
+      targets.push({ valueEl, detailEl, apply });
+    });
+    if (!targets.length) return;
+    const observer = new MutationObserver(() => targets.forEach(target => target.apply()));
+    targets.forEach(({valueEl,detailEl}) => {
+      observer.observe(valueEl,{childList:true,subtree:true,characterData:true});
+      if (detailEl) observer.observe(detailEl,{childList:true,subtree:true,characterData:true});
+    });
+    state.metricLock = {observer};
   }
 
   function setPlatform(key,value,detail) {
@@ -341,11 +374,23 @@
     setPlatform("audits",fmt(platform.audits.filter(x=>x.institution_id===id).length),"Audit events for this institution");
     const profilesCard=$("totalUsers")?.closest(".dashboard-card");
     if(profilesCard) profilesCard.classList.remove("cn-scope-unavailable");
+
+    lockScopedMetrics({
+      totalUsers:{value:fmt(members.length),detail:"Users assigned to this institution"},
+      totalStudents:{value:fmt(students.length),detail:"Student memberships in this institution"},
+      pendingApprovals:{value:fmt(pending.length),detail:"Pending institution memberships"},
+      activeSessions:{value:results.sessions?.unavailable?"—":fmt(results.sessions?.count||0),detail:"Active sessions for institution members"},
+      totalDailyCheckIns:{value:results.todayAttendance?.unavailable?"—":fmt(results.todayAttendance?.count||0),detail:"Institution members · today"},
+      overallCheckInCount:{value:results.attendance?.unavailable?"—":fmt(results.attendance?.count||0),detail:"Institution members · all time"},
+      totalCourses:{value:results.courses?.unavailable?"—":fmt(results.courses?.count||0),detail:"Courses created by institution members"},
+      totalResources:{value:results.resources?.unavailable?"—":fmt(results.resources?.count||0),detail:"Resources uploaded by institution members"}
+    });
   }
 
   async function refresh() {
     if(state.busy) { state.refreshQueued=true; return; }
     state.busy=true;
+    releaseScopedMetricLock();
     const button=$("cnPlatformRefresh");
     if(button){button.disabled=true;button.classList.add("is-loading");}
     const updated=$("cnPlatformMetricsUpdated");
@@ -362,6 +407,14 @@
       if(updated) updated.textContent="Updated "+new Intl.DateTimeFormat("en-KE",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Nairobi"}).format(new Date());
     }catch(error){
       console.error("[Campus Nexus dashboard filter]",error);
+      const selectedInstitution = state.institutions.find(x=>x.id===selectedInstitutionId());
+      if(selectedInstitution){
+        ["totalUsers","totalStudents","pendingApprovals","activeSessions","totalDailyCheckIns","overallCheckInCount","totalCourses","totalResources"].forEach(id=>{
+          const el=$(id); if(el) el.textContent="—";
+          const detail=el?.closest(".dashboard-card")?.querySelector(".minor-data");
+          if(detail) detail.textContent="Institution data unavailable · check permissions";
+        });
+      }
       if(updated) updated.textContent="Institution data unavailable: "+(error.message||"Check access");
     }finally{
       state.busy=false;
