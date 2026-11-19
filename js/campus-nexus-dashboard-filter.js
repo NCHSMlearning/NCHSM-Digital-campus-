@@ -369,10 +369,15 @@
     const nairobiDate=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Nairobi",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
     const todayStart=new Date(nairobiDate+"T00:00:00+03:00").toISOString();
     const todayEnd=new Date(new Date(todayStart).getTime()+86400000).toISOString();
-    const today=new Date(nairobiDate+"T00:00:00+03:00");
-    const weekday=(today.getUTCDay()+6)%7;
-    const weekStart=new Date(today.getTime()-weekday*86400000).toISOString();
-    const weekEnd=new Date(new Date(weekStart).getTime()+7*86400000).toISOString();
+    const [localYear,localMonth,localDay]=nairobiDate.split("-").map(Number);
+    const localNoonUtc=Date.UTC(localYear,localMonth-1,localDay,12,0,0);
+    const weekday=(new Date(localNoonUtc).getUTCDay()+6)%7;
+    const localDateString=(offsetDays)=>{
+      const date=new Date(localNoonUtc+(offsetDays-weekday)*86400000);
+      return date.getUTCFullYear()+"-"+String(date.getUTCMonth()+1).padStart(2,"0")+"-"+String(date.getUTCDate()).padStart(2,"0");
+    };
+    const weekStartDate=localDateString(0);
+    const weekEndDate=localDateString(7);
 
     const jobs=[];
     const add=(key,promise)=>jobs.push([key,promise]);
@@ -386,7 +391,7 @@
     add("pendingMarks",client.from("student_marks").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("approval_status","pending").eq("published",false));
     add("publishedMarks",client.from("student_marks").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("approval_status","approved").eq("published",true));
     add("pendingMessages",client.from("messages").select("id",{count:"exact",head:true}).eq("institution_id",id).ilike("approval_status","pending"));
-    add("weeklySessions",client.from("scheduled_sessions").select("id",{count:"exact",head:true}).eq("institution_id",id).gte("session_date",weekStart.slice(0,10)).lt("session_date",weekEnd.slice(0,10)));
+    add("weeklySessions",client.from("scheduled_sessions").select("id",{count:"exact",head:true}).eq("institution_id",id).gte("session_date",weekStartDate).lt("session_date",weekEndDate));
     if(userIds.length) add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("is_active",true));
     const results={};
     const settled=await Promise.all(jobs.map(async ([key,promise])=>[key,await promise]));
