@@ -1,7 +1,6 @@
 /* NCHSM DASHBOARD MAINTENANCE GATE
- * Temporarily closes all non-Super-Admin dashboards and locally signs out
- * any existing browser session before returning the user to the login page.
- * Super Admin dashboard is deliberately excluded.
+ * Temporarily closes selected staff/admin dashboards only.
+ * The student portal remains available and must never be signed out by this gate.
  */
 (function () {
   'use strict';
@@ -24,8 +23,7 @@
     'nchsmaccounts.html': 'adminlogin.html',
     'nurseiqadmin.html': 'nurseiq-admin-login.html',
     'parents.html': 'login.html',
-    'reports.html': 'adminlogin.html',
-    'student.html': 'login.html'
+    'reports.html': 'adminlogin.html'
   };
 
   if (!Object.prototype.hasOwnProperty.call(loginRoutes, path)) return;
