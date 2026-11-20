@@ -111,7 +111,7 @@
     if ($("cnInstitutionCustomLogin")) $("cnInstitutionCustomLogin").required = custom;
     const sharedLogin = $("cnSharedLoginPreview");
     const sharedRegistration = $("cnSharedRegistrationPreview");
-    if (sharedLogin) sharedLogin.textContent = "https://campusnexus.co.ke/login";
+    if (sharedLogin) sharedLogin.textContent = "https://campusnexus.co.ke/login.html";
     if (sharedRegistration) sharedRegistration.textContent = "https://campusnexus.co.ke/register?school_code=YOUR_CODE";
   }
 
@@ -194,7 +194,7 @@
         '<td>' + esc(i._subscription?.plan_name || "—") + '<small class="cn-subline">' +
         (i._subscription ? esc(i._subscription.currency) + " " + Number(i._subscription.amount).toLocaleString() + " / " + esc(i._subscription.billing_cycle) : "Not configured") + '</small></td>' +
         '<td>' + esc(i.contact_email || "—") + '</td><td>' +
-          '<a href="' + esc(i._loginUrl || "https://campusnexus.co.ke/login") + '" target="_blank" rel="noopener">Login portal</a>' +
+          '<a href="' + esc(i._loginUrl || "https://campusnexus.co.ke/login.html") + '" target="_blank" rel="noopener">Login portal</a>' +
           (registrationUrl ? '<br><a href="' + esc(registrationUrl) + '" target="_blank" rel="noopener">' + (i.portal_mode === "custom_website" ? "Institution portal" : "Registration link") + '</a><button class="cn-row-action" type="button" data-copy-registration="' + esc(i.id) + '">Copy</button>' : '<small class="cn-subline">School code pending</small>') + '</td>' +
         '<td><div class="cn-row-actions"><button class="cn-row-action" type="button" data-edit="' + esc(i.id) + '">Manage</button>' +
         (i.status === "suspended" ? '<button class="cn-row-action" type="button" data-status="' + esc(i.id) + '" data-next="active">Activate</button>' :
@@ -254,7 +254,7 @@
       const member = memberships.find(x => x.institution_id === i.id && x.status === "active");
       const registration = registrationLinks.find(x => x.institution_id === i.id);
       const schoolCode = String(i.school_code || "");
-      const sharedLoginUrl = "https://campusnexus.co.ke/login" + (schoolCode ? "?school_code=" + encodeURIComponent(schoolCode) : "");
+      const sharedLoginUrl = "https://campusnexus.co.ke/login.html" + (schoolCode ? "?school_code=" + encodeURIComponent(schoolCode) : "");
       const sharedRegistrationUrl = "https://campusnexus.co.ke/register?school_code=" + encodeURIComponent(schoolCode);
       const isCustomPortal = i.portal_mode === "custom_website" && Boolean(i.custom_login_url);
       const loginUrl = isCustomPortal ? i.custom_login_url : sharedLoginUrl;
