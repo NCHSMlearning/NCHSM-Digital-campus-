@@ -14654,42 +14654,8 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
         if (overlay) overlay.style.display = 'none';
     };
 
-    /**
-     * Show notification toast
-     */
-    window.showNotification = function(message, type = 'info') {
-        const colors = {
-            success: '#059669',
-            error: '#dc2626',
-            warning: '#f59e0b',
-            info: '#3b82f6'
-        };
-        
-        // Remove existing notifications of same type
-        const existing = document.querySelectorAll('.custom-notification');
-        existing.forEach(el => el.remove());
-        
-        const notification = document.createElement('div');
-        notification.className = 'custom-notification';
-        notification.style.cssText = `
-            position: fixed; top: 20px; right: 20px; padding: 14px 24px;
-            background: ${colors[type] || '#3b82f6'}; color: white;
-            border-radius: 10px; font-weight: 500; z-index: 100000;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-width: 450px; font-size: 14px;
-            animation: slideIn 0.3s ease-out;
-            border-left: 4px solid rgba(255,255,255,0.3);
-        `;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(20px)';
-            notification.style.transition = 'all 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
-        }, 4000);
-    };
+    // Notification handling is provided by js/superadmin-notifications.js.
+
 
     /**
      * Get current user from session
@@ -15503,6 +15469,7 @@ document.addEventListener('DOMContentLoaded',function(){
   sync();
 })();
 </script>
+<script src="js/superadmin-notifications.js?v=20261120-toast-v1" defer></script>
 <script src="js/nchsm-superadmin-responsive.js?v=20261119b" defer></script>
 </body>
 </html>
