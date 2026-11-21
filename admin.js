@@ -95,6 +95,12 @@ function getHODProgramScope() {
     const role = String(currentAdmin?.role || '').toLowerCase().trim();
     if (role === 'nursing_hod') return 'KRCHN';
     if (role === 'tvet_hod') return 'TVET';
+    if (['hod','head_of_department'].includes(role)) {
+        const assigned = String(currentAdmin?.program || currentAdmin?.department || '').trim().toUpperCase();
+        if (assigned === 'KRCHN' || assigned === 'TVET') return assigned;
+        if (TVET_PROGRAMS.includes(assigned)) return 'TVET';
+        return assigned || null;
+    }
     return null;
 }
 
@@ -102,6 +108,7 @@ function applyHODStudentScope(query) {
     const scope = getHODProgramScope();
     if (scope === 'KRCHN') return query.eq('program', 'KRCHN');
     if (scope === 'TVET') return query.in('program', TVET_PROGRAMS);
+    if (scope && scope !== 'KRCHN') return query.eq('program', scope);
     return query;
 }
 
