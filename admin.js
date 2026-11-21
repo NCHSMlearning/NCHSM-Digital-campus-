@@ -13,6 +13,10 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 let db = null;
 let currentAdmin = null;
+let activeInstitutionId = null;
+let activeInstitutionMembership = null;
+let rawSupabaseClient = null;
+let tenantClientInstalled = false;
 let allUnitsList = [];
 let selectedBlock = 'all';
 let allResourcesData = [];
@@ -262,6 +266,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Session/profile validation must finish before any protected table queries.
     const authenticatedAdmin = await checkUserSession();
     if (!authenticatedAdmin) return;
+    installInstitutionScopedClient();
     await loadDashboardNumbers();
 });
 
@@ -327,7 +332,7 @@ async function checkUserSession() {
         if (sessionError || !sessionData?.session) { window.location.href = 'login.html'; return false; }
         const user = sessionData.session.user;
         const { data: profile, error } = await db.from('consolidated_user_profiles_table')
-            .select('user_id,email,full_name,role,status,program,department,staff_id')
+            .select('user_id,email,full_name,role,status,program,department,staff_id,institution_id')
             .eq('user_id', user.id).maybeSingle();
         if (error || !profile) { window.location.href = 'login.html'; return false; }
         currentAdmin = profile;
@@ -342,6 +347,36 @@ async function checkUserSession() {
             window.location.href = 'login.html';
             return false;
         }
+        // Resolve and validate the tenant context before any module can query data.
+        const membershipQuery = await db.from('institution_users')
+            .select('institution_id,role,status')
+            .eq('user_id', user.id)
+            .eq('status', 'active');
+        if (membershipQuery.error) throw membershipQuery.error;
+        const memberships = membershipQuery.data || [];
+        if (role === 'admin' || role === 'administrator' || role === 'school_admin') {
+            const matching = memberships.filter(m => String(m.role || '').toLowerCase() === 'institution_admin');
+            const profileInstitution = profile.institution_id || null;
+            const selected = matching.find(m => m.institution_id === profileInstitution) || (matching.length === 1 ? matching[0] : null);
+            if (!selected?.institution_id) {
+                showToast('Your account has no unique active institution administrator membership. Ask Super Admin to assign your institution.', 'error');
+                await db.auth.signOut();
+                window.location.href = 'login.html';
+                return false;
+            }
+            activeInstitutionId = selected.institution_id;
+            activeInstitutionMembership = selected;
+        } else {
+            if (!profile.institution_id) {
+                showToast('Your account is not assigned to an institution. Contact your administrator.', 'error');
+                await db.auth.signOut();
+                window.location.href = 'login.html';
+                return false;
+            }
+            activeInstitutionId = profile.institution_id;
+            activeInstitutionMembership = memberships.find(m => m.institution_id === activeInstitutionId) || null;
+        }
+        if (!activeInstitutionId) throw new Error('Institution context could not be established.');
         const nameSpan = document.getElementById('adminName');
         if (nameSpan) nameSpan.textContent = profile.full_name || 'Administrator';
         const roleLabel = document.getElementById('adminRoleLabel');
@@ -352,6 +387,108 @@ async function checkUserSession() {
         window.location.href = 'login.html';
         return false;
     }
+}
+
+
+// ------------------------------------------------------------------
+// INSTITUTION CONTEXT: all supported modules share one tenant boundary.
+// Database RLS remains the final security boundary; this adds explicit
+// tenant predicates and ownership values to every admin.js data operation.
+// ------------------------------------------------------------------
+const TENANT_TABLES = new Set([
+ 'consolidated_user_profiles_table','students','units_catalog','courses','programs','program_blocks','program_intakes',
+ 'lecturer_subject_assignments','scheduled_sessions','exams','exam_attempts','resources','notifications','messages',
+ 'support_tickets','geo_attendance_logs','attendance','student_marks','student_unit_registrations','cats',
+ 'lecturers','staff_records','admin_notifications','announcements','institution_timetable_entries',
+ 'institution_admissions','institution_clinical_placements','institution_hr_records','institution_research_projects',
+ 'institution_welfare_cases','institution_workspace_records','finance_student_accounts','user_documents'
+]);
+const HOD_PROGRAM_COLUMNS = {
+ consolidated_user_profiles_table:'program', students:'program', units_catalog:'program', courses:'target_program',
+ programs:'program_code', program_blocks:null, program_intakes:null, lecturer_subject_assignments:'program',
+ scheduled_sessions:'target_program', exams:'program_type', resources:'target_program', notifications:'target_program',
+ messages:'target_program', student_marks:'program', student_unit_registrations:'program', cats:'program',
+ lecturers:'program', staff_records:'program'
+};
+function hodAllowedPrograms(){
+ const scope=getHODProgramScope();
+ if(scope==='KRCHN') return ['KRCHN'];
+ if(scope==='TVET') return TVET_PROGRAMS.slice();
+ return null;
+}
+function addTenantToPayload(table, value){
+ const rows=Array.isArray(value)?value:[value];
+ return rows.map(row=>{
+  if(!row || typeof row!=='object') return row;
+  const next={...row};
+  if(TENANT_TABLES.has(table)) next.institution_id=activeInstitutionId;
+  const allowed=hodAllowedPrograms(), column=HOD_PROGRAM_COLUMNS[table];
+  if(allowed && column && next[column] && !allowed.includes(String(next[column]).toUpperCase()))
+   throw new Error('This action is outside your assigned programme.');
+  if(allowed && table==='programs' && next.program_code && !allowed.includes(String(next.program_code).toUpperCase()))
+   throw new Error('You cannot create or edit programmes outside your assigned scope.');
+  return next;
+ });
+}
+function wrapTenantBuilder(builder, table, applied){
+ return new Proxy(builder,{
+  get(target, prop){
+   const value=target[prop];
+   if(prop==='then') return typeof value==='function'?value.bind(target):value;
+   if(typeof value!=='function') return value;
+   return (...args)=>{
+    let callArgs=args;
+    if(prop==='insert'||prop==='upsert') callArgs=[addTenantToPayload(table,args[0]),...args.slice(1)];
+    if(prop==='update') callArgs=[addTenantToPayload(table,args[0])[0],...args.slice(1)];
+    const result=value.apply(target,callArgs);
+    if(!result || typeof result!=='object' || typeof result.then==='function') return result;
+    let nextApplied=applied;
+    if(TENANT_TABLES.has(table) && !applied && prop==='select'){
+      result.eq('institution_id',activeInstitutionId);
+      nextApplied=true;
+    }
+    if(TENANT_TABLES.has(table) && !applied && (prop==='update'||prop==='delete'||prop==='upsert')){
+      // UPDATE/DELETE predicates are added on the returned builder below.
+    }
+    return wrapTenantBuilder(result,table,nextApplied);
+   };
+  }
+ });
+}
+function installInstitutionScopedClient(){
+ if(tenantClientInstalled||!db||!activeInstitutionId)return;
+ rawSupabaseClient=db;
+ db=new Proxy(rawSupabaseClient,{
+  get(target,prop){
+   if(prop==='from') return (table)=>{
+    let builder=target.from(table);
+    if(TENANT_TABLES.has(table)){
+     const original=builder;
+     builder=new Proxy(original,{
+      get(q,p){
+       const v=q[p];
+       if(p==='then')return typeof v==='function'?v.bind(q):v;
+       if(typeof v!=='function')return v;
+       return (...args)=>{
+        let a=args;
+        if(p==='insert'||p==='upsert')a=[addTenantToPayload(table,args[0]),...args.slice(1)];
+        if(p==='update')a=[addTenantToPayload(table,args[0])[0],...args.slice(1)];
+        let out=v.apply(q,a);
+        if(!out||typeof out!=='object'||typeof out.then==='function')return out;
+        if(p==='select'||p==='update'||p==='delete'||p==='upsert')out.eq('institution_id',activeInstitutionId);
+        const allowed=hodAllowedPrograms(),col=HOD_PROGRAM_COLUMNS[table];
+        if(allowed&&col&&['select','update','delete'].includes(p))out=out.in(col,allowed);
+        return wrapTenantBuilder(out,table,true);
+       };
+      }
+     });
+    }
+    return builder;
+   };
+   const v=target[prop];return typeof v==='function'?v.bind(target):v;
+  }
+ });
+ tenantClientInstalled=true;
 }
 
 // ------------------------------------------------------------------
@@ -2240,6 +2377,72 @@ document.getElementById('edit-welcome-form')?.addEventListener('submit', async f
     } catch(err) {
         showToast('Error: ' + err.message, 'error');
     }
+});
+
+
+// ------------------------------------------------------------------
+// PROGRAMME MANAGEMENT: edit programme structure and block/term count.
+// ------------------------------------------------------------------
+let institutionProgramsCache=[];
+async function loadInstitutionPrograms(){
+ const host=document.getElementById('institution-program-list');if(!host)return;
+ host.innerHTML='<p>Loading programmes…</p>';
+ try{
+  const {data,error}=await db.from('programs').select('*').order('program_name');
+  if(error)throw error;
+  institutionProgramsCache=data||[];
+  if(!institutionProgramsCache.length){host.innerHTML='<p>No programmes configured for this institution yet.</p>';return;}
+  host.innerHTML=institutionProgramsCache.map(p=>'<article class="program-admin-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:10px 0;background:#fff"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong>'+escapeHtml(p.program_name)+'</strong><div style="color:#64748b">'+escapeHtml(p.program_code)+' · '+escapeHtml(p.category)+' · '+escapeHtml(p.program_type)+'</div></div><button class="btn-action" type="button" onclick="editInstitutionProgram(\''+p.id+'\')">Edit programme</button></div><div style="margin-top:8px;color:#475569">Duration: '+(p.duration_months||0)+' months · Credits: '+(p.total_credits||0)+'</div></article>').join('');
+ }catch(e){host.innerHTML='<p style="color:#b91c1c">Could not load programmes: '+escapeHtml(e.message)+'</p>';}
+}
+window.editInstitutionProgram=function(id){
+ const p=institutionProgramsCache.find(x=>x.id===id);if(!p)return;
+ $('program_edit_id').value=p.id;$('program_code').value=p.program_code||'';$('program_name').value=p.program_name||'';
+ $('program_category').value=p.category||'Diploma';$('program_type').value=p.program_type||'block';
+ $('program_duration').value=p.duration_months||0;$('program_credits').value=p.total_credits||0;
+ $('program_description').value=p.description||'';
+ loadProgramBlockCount(p.id);
+ $('program-editor-title').textContent='Edit programme';$('program-save-btn').textContent='Save programme';
+ document.getElementById('program-editor').scrollIntoView({behavior:'smooth',block:'start'});
+};
+async function loadProgramBlockCount(programId){
+ const count=$('program_structure_count');if(!count)return;
+ if(!programId){count.value=0;return;}
+ const {data,error}=await db.from('program_blocks').select('id,block_name,block_sequence').eq('program_id',programId).order('block_sequence');
+ if(error){showToast('Unable to load programme structure: '+error.message,'error');return;}
+ count.value=(data||[]).filter(x=>x.status!=='inactive').length;
+}
+window.resetInstitutionProgramForm=function(){
+ const f=$('institution-program-form');if(f)f.reset();
+ $('program_edit_id').value='';$('program_structure_count').value=6;
+ $('program-editor-title').textContent='Add programme';$('program-save-btn').textContent='Add programme';
+};
+document.getElementById('institution-program-form')?.addEventListener('submit',async function(e){
+ e.preventDefault();
+ const id=$('program_edit_id').value,code=$('program_code').value.trim().toUpperCase(),name=$('program_name').value.trim();
+ const type=$('program_type').value,count=Math.max(0,Math.min(30,parseInt($('program_structure_count').value||'0',10)));
+ if(!code||!name){showToast('Programme code and name are required.','warning');return;}
+ if(!count){showToast('Enter at least one block or term.','warning');return;}
+ const payload={program_code:code,program_name:name,category:$('program_category').value,program_type:type,duration_months:parseInt($('program_duration').value||'0',10),total_credits:parseInt($('program_credits').value||'0',10),description:$('program_description').value.trim(),status:'active'};
+ const btn=$('program-save-btn');btn.disabled=true;
+ try{
+  let programId=id;
+  if(id){const {data,error}=await db.from('programs').update(payload).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('Programme not found in this institution.');}
+  else{const {data,error}=await db.from('programs').insert(payload).select('id').single();if(error)throw error;programId=data.id;}
+  const {data:existing,error:readErr}=await db.from('program_blocks').select('id,block_sequence').eq('program_id',programId);
+  if(readErr)throw readErr;
+  const rows=existing||[];
+  // Retain stable IDs, update names/order, add missing rows, deactivate extras.
+  for(let i=0;i<count;i++){
+   const label=type==='term'?'Term '+(i+1):'Block '+(i+1);
+   if(rows[i]){const {error}=await db.from('program_blocks').update({block_name:label,block_sequence:i+1,status:'active'}).eq('id',rows[i].id);if(error)throw error;}
+   else{const {error}=await db.from('program_blocks').insert({program_id:programId,block_name:label,block_sequence:i+1,status:'active'});if(error)throw error;}
+  }
+  for(let i=count;i<rows.length;i++){const {error}=await db.from('program_blocks').update({status:'inactive'}).eq('id',rows[i].id);if(error)throw error;}
+  showToast('Programme and '+count+' '+(type==='term'?'terms':'blocks')+' saved.','success');
+  resetInstitutionProgramForm();await loadInstitutionPrograms();
+ }catch(err){showToast('Could not save programme: '+err.message,'error');}
+ finally{btn.disabled=false;}
 });
 
 // ------------------------------------------------------------------
