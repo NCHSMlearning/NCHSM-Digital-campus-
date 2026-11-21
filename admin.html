@@ -1370,6 +1370,7 @@
             
             <ul class="nav" id="mainNav">
                 <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+<li><a href="#" data-tab="institution-programs"><i class="fas fa-graduation-cap"></i><span>Programmes & Blocks</span></a></li>
                 
                 <!-- User Management Dropdown -->
                 <li class="nav-dropdown">
@@ -1980,7 +1981,26 @@
 <section id="research-supervision" class="tab-content" style="display:none"><h2>Research Supervision</h2><p>Monitor student research proposals, revisions, supervisor details and review status.</p><div class="filter-row"><input id="hodResearchSearch" placeholder="Search student or proposal…" oninput="filterHODTable('hodResearchRows','hodResearchSearch')"><button class="btn-action" onclick="loadHODResearch()">Refresh</button></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>Programme</th><th>Proposal</th><th>Type</th><th>Supervisor</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead><tbody id="hodResearchRows"></tbody></table></div></section>
 <section id="student-progression" class="tab-content" style="display:none"><h2>Student Academic Progression</h2><p>Review student registration and available assessment results.</p><div class="filter-row"><input id="hodStudentSearch" placeholder="Search student name or admission number…" oninput="filterHODTable('hodStudentRows','hodStudentSearch')"><button class="btn-action" onclick="loadHODStudentProgression()">Refresh</button></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>Admission No.</th><th>Programme</th><th>Intake</th><th>Current Block / Term</th><th>Marks records</th><th>Average</th></tr></thead><tbody id="hodStudentRows"></tbody></table></div></section>
 <section id="academic-reports" class="tab-content" style="display:none"><h2>Academic Reports & Analytics</h2><p>School-level enrolment, lecturer activity, teaching document, research and attendance snapshots.</p><div id="hodReportStats" class="stats-grid"></div><div class="chart-card" style="margin:18px 0"><div class="chart-header"><h4><i class="fas fa-chart-column"></i> Academic Activity Overview</h4><span>Live database totals</span></div><div class="chart-container"><canvas id="hodAcademicOverviewChart"></canvas></div></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Area</th><th>Records</th><th>Details</th></tr></thead><tbody id="hodReportRows"></tbody></table></div><button class="btn-action" onclick="exportHODReport()">Export report CSV</button></section>
-        </main>
+        <section id="institution-programs" class="tab-content" style="display:none">
+<h2><i class="fas fa-graduation-cap"></i> Programme Management</h2>
+<p>Manage the programmes offered by this institution, including whether the structure uses blocks or terms and how many are required.</p>
+<div id="program-editor" style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;margin:16px 0">
+<h3 id="program-editor-title">Add programme</h3>
+<form id="institution-program-form" class="inline-form">
+<input type="hidden" id="program_edit_id">
+<label>Programme code<input id="program_code" required maxlength="30" placeholder="e.g. KRCHN"></label>
+<label>Programme name<input id="program_name" required placeholder="Programme name"></label>
+<label>Category<select id="program_category"><option>Diploma</option><option>Certificate</option><option>Artisan</option><option>Degree</option><option>Other</option></select></label>
+<label>Academic structure<select id="program_type"><option value="block">Blocks</option><option value="term">Terms</option></select></label>
+<label>Number of blocks / terms<input id="program_structure_count" type="number" min="1" max="30" value="6" required></label>
+<label>Duration (months)<input id="program_duration" type="number" min="0" value="0"></label>
+<label>Total credits<input id="program_credits" type="number" min="0" value="0"></label>
+<label style="flex:1 1 100%">Description<textarea id="program_description" rows="3"></textarea></label>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button id="program-save-btn" class="btn-action" type="submit">Add programme</button><button type="button" class="btn-secondary" onclick="resetInstitutionProgramForm()">Clear</button></div>
+</form>
+</div>
+<div id="institution-program-list"><p>Programmes load when this section opens.</p></div>
+</section></main>
     </div>
 
     <!-- ============================================================ -->
