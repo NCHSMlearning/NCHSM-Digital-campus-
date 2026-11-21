@@ -662,6 +662,7 @@ function loadTabContent(tabName) {
         case 'messages': loadMessageList(); break;
         case 'calendar': setupCalendar(); break;
         case 'welcome-editor': loadWelcomeMessage(); break;
+        case 'institution-programs': loadInstitutionPrograms(); break;
         case 'lecturer-directory': loadHODLecturerDirectory(); break;
         case 'submission-progress': loadHODSubmissionProgress(); break;
         case 'teaching-documents': loadHODTeachingDocuments(); break;
