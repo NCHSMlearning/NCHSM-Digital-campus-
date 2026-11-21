@@ -2388,70 +2388,54 @@ document.getElementById('edit-welcome-form')?.addEventListener('submit', async f
 });
 
 
-// ------------------------------------------------------------------
-// PROGRAMME MANAGEMENT: edit programme structure and block/term count.
-// ------------------------------------------------------------------
-let institutionProgramsCache=[];
+// INSTITUTION PROGRAMME CONFIGURATION — tenant-owned programmes only.
+let institutionProgramsCache=[], institutionBlocksCache=[], institutionIntakesCache=[], institutionCoursesCache=[], institutionMappingsCache=[];
+const ip$=id=>document.getElementById(id), ipEsc=v=>escapeHtml(v==null?'':String(v));
+const ipPid=id=>ip$(id)?.value||'';
+const ipPname=id=>institutionProgramsCache.find(p=>p.id===id)?.program_name||'Programme';
+const ipOpts=sel=>'<option value="">Select programme</option>'+institutionProgramsCache.map(p=>'<option value="'+ipEsc(p.id)+'" '+(p.id===sel?'selected':'')+'>'+ipEsc(p.program_code+' — '+p.program_name)+'</option>').join('');
 async function loadInstitutionPrograms(){
- const host=document.getElementById('institution-program-list');if(!host)return;
- host.innerHTML='<p>Loading programmes…</p>';
+ const host=ip$('institution-program-list');if(!host)return;host.innerHTML='<tr><td colspan="7">Loading…</td></tr>';
  try{
-  const {data,error}=await db.from('programs').select('*').order('program_name');
-  if(error)throw error;
-  institutionProgramsCache=data||[];
-  if(!institutionProgramsCache.length){host.innerHTML='<p>No programmes configured for this institution yet.</p>';return;}
-  host.innerHTML=institutionProgramsCache.map(p=>'<article class="program-admin-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:10px 0;background:#fff"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong>'+escapeHtml(p.program_name)+'</strong><div style="color:#64748b">'+escapeHtml(p.program_code)+' · '+escapeHtml(p.category)+' · '+escapeHtml(p.program_type)+'</div></div><button class="btn-action" type="button" onclick="editInstitutionProgram(\''+p.id+'\')">Edit programme</button></div><div style="margin-top:8px;color:#475569">Duration: '+(p.duration_months||0)+' months · Credits: '+(p.total_credits||0)+'</div></article>').join('');
- }catch(e){host.innerHTML='<p style="color:#b91c1c">Could not load programmes: '+escapeHtml(e.message)+'</p>';}
+  const {data,error}=await db.from('programs').select('id,program_code,program_name,category,program_type,duration_months,total_credits,description,status').order('program_name');if(error)throw error;
+  institutionProgramsCache=data||[];const ids=institutionProgramsCache.map(p=>p.id);
+  const [b,i]=ids.length?await Promise.all([db.from('program_blocks').select('id,program_id,block_name,block_sequence,description,credit_hours,status').in('program_id',ids).order('block_sequence'),db.from('program_intakes').select('id,program_id,intake_name,intake_year,intake_month,start_date,end_date,status').in('program_id',ids).order('intake_year',{ascending:false})]):[{data:[],error:null},{data:[],error:null}];
+  if(b.error)throw b.error;if(i.error)throw i.error;institutionBlocksCache=b.data||[];institutionIntakesCache=i.data||[];
+  ip$('ipStatPrograms').textContent=ids.length;ip$('ipStatActive').textContent=institutionProgramsCache.filter(p=>p.status==='active').length;ip$('ipStatIntakes').textContent=institutionIntakesCache.length;ip$('ipStatBlocks').textContent=institutionBlocksCache.filter(x=>x.status!=='inactive').length;
+  host.innerHTML=institutionProgramsCache.map(p=>'<tr><td>'+ipEsc(p.program_code)+'</td><td>'+ipEsc(p.program_name)+'</td><td>'+ipEsc(p.category)+'</td><td>'+ipEsc(p.program_type)+'</td><td>'+Number(p.duration_months||0)+' months</td><td>'+ipEsc(p.status)+'</td><td><div class="ip-actions"><button class="btn-sm btn-edit" onclick="editInstitutionProgram(\''+p.id+'\')">Edit</button><button class="btn-sm btn-edit" onclick="selectInstitutionProgram(\''+p.id+'\')">Structure</button></div></td></tr>').join('')||'<tr><td colspan="7">No programmes configured.</td></tr>';
+  ['ip_block_program','ip_intake_program','ip_map_program'].forEach(id=>{const el=ip$(id),v=el.value;el.innerHTML=ipOpts(v);});
+  await Promise.all([loadInstitutionBlocks(),loadInstitutionIntakes(),loadInstitutionCoursesAndMappings()]);
+ }catch(e){host.innerHTML='<tr><td colspan="7">'+ipEsc(e.message)+'</td></tr>';showToast('Programme load failed: '+e.message,'error');}
 }
-window.editInstitutionProgram=function(id){
- const p=institutionProgramsCache.find(x=>x.id===id);if(!p)return;
- $('program_edit_id').value=p.id;$('program_code').value=p.program_code||'';$('program_name').value=p.program_name||'';
- $('program_category').value=p.category||'Diploma';$('program_type').value=p.program_type||'block';
- $('program_duration').value=p.duration_months||0;$('program_credits').value=p.total_credits||0;
- $('program_description').value=p.description||'';
- loadProgramBlockCount(p.id);
- $('program-editor-title').textContent='Edit programme';$('program-save-btn').textContent='Save programme';
- document.getElementById('program-editor').scrollIntoView({behavior:'smooth',block:'start'});
-};
-async function loadProgramBlockCount(programId){
- const count=$('program_structure_count');if(!count)return;
- if(!programId){count.value=0;return;}
- const {data,error}=await db.from('program_blocks').select('id,block_name,block_sequence').eq('program_id',programId).order('block_sequence');
- if(error){showToast('Unable to load programme structure: '+error.message,'error');return;}
- count.value=(data||[]).filter(x=>x.status!=='inactive').length;
-}
-window.resetInstitutionProgramForm=function(){
- const f=$('institution-program-form');if(f)f.reset();
- $('program_edit_id').value='';$('program_structure_count').value=6;
- $('program-editor-title').textContent='Add programme';$('program-save-btn').textContent='Add programme';
-};
-document.getElementById('institution-program-form')?.addEventListener('submit',async function(e){
- e.preventDefault();
- const id=$('program_edit_id').value,code=$('program_code').value.trim().toUpperCase(),name=$('program_name').value.trim();
- const type=$('program_type').value,count=Math.max(0,Math.min(30,parseInt($('program_structure_count').value||'0',10)));
- if(!code||!name){showToast('Programme code and name are required.','warning');return;}
- if(!count){showToast('Enter at least one block or term.','warning');return;}
- const payload={program_code:code,program_name:name,category:$('program_category').value,program_type:type,duration_months:parseInt($('program_duration').value||'0',10),total_credits:parseInt($('program_credits').value||'0',10),description:$('program_description').value.trim(),status:'active'};
- const btn=$('program-save-btn');btn.disabled=true;
- try{
-  let programId=id;
-  if(id){const {data,error}=await db.from('programs').update(payload).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('Programme not found in this institution.');}
-  else{const {data,error}=await db.from('programs').insert(payload).select('id').single();if(error)throw error;programId=data.id;}
-  const {data:existing,error:readErr}=await db.from('program_blocks').select('id,block_sequence').eq('program_id',programId);
-  if(readErr)throw readErr;
-  const rows=existing||[];
-  // Retain stable IDs, update names/order, add missing rows, deactivate extras.
-  for(let i=0;i<count;i++){
-   const label=type==='term'?'Term '+(i+1):'Block '+(i+1);
-   if(rows[i]){const {error}=await db.from('program_blocks').update({block_name:label,block_sequence:i+1,status:'active'}).eq('id',rows[i].id);if(error)throw error;}
-   else{const {error}=await db.from('program_blocks').insert({program_id:programId,block_name:label,block_sequence:i+1,status:'active'});if(error)throw error;}
-  }
-  for(let i=count;i<rows.length;i++){const {error}=await db.from('program_blocks').update({status:'inactive'}).eq('id',rows[i].id);if(error)throw error;}
-  showToast('Programme and '+count+' '+(type==='term'?'terms':'blocks')+' saved.','success');
-  resetInstitutionProgramForm();await loadInstitutionPrograms();
- }catch(err){showToast('Could not save programme: '+err.message,'error');}
- finally{btn.disabled=false;}
+window.selectInstitutionProgram=id=>{['ip_block_program','ip_intake_program','ip_map_program'].forEach(k=>ip$(k).value=id);loadInstitutionBlocks();loadInstitutionIntakes();loadInstitutionCoursesAndMappings();};
+window.editInstitutionProgram=id=>{const p=institutionProgramsCache.find(x=>x.id===id);if(!p)return;ip$('program_edit_id').value=id;['program_code','program_name','program_category','program_type','program_duration','program_credits','program_description','program_status'].forEach((k)=>{const map={program_duration:'duration_months',program_credits:'total_credits',program_description:'description',program_status:'status'};ip$(k).value=p[map[k]||k.replace('program_','')]??'';});const rows=institutionBlocksCache.filter(x=>x.program_id===id).sort((a,b)=>a.block_sequence-b.block_sequence);ip$('program_structure').value=rows.some(x=>/^term/i.test(x.block_name))?'term':'block';ip$('program_structure_count').value=rows.filter(x=>x.status!=='inactive').length||1;ip$('program-editor-title').textContent='Edit programme';ip$('program-save-btn').textContent='Update programme';};
+window.resetInstitutionProgramForm=()=>{ip$('institution-program-form').reset();ip$('program_edit_id').value='';ip$('program_structure_count').value=6;ip$('program-editor-title').textContent='Add programme';ip$('program-save-btn').textContent='Save programme & structure';};
+ip$('institution-program-form')?.addEventListener('submit',async e=>{
+ e.preventDefault();const id=ip$('program_edit_id').value,code=ip$('program_code').value.trim().toUpperCase(),name=ip$('program_name').value.trim(),count=Math.max(1,Math.min(30,Number(ip$('program_structure_count').value)||0));
+ if(!code||!name)return showToast('Programme code and name are required.','warning');
+ const payload={program_code:code,program_name:name,category:ip$('program_category').value,program_type:ip$('program_type').value,duration_months:Math.max(0,Number(ip$('program_duration').value)||0),total_credits:Math.max(0,Number(ip$('program_credits').value)||0),description:ip$('program_description').value.trim()||null,status:ip$('program_status').value,updated_at:new Date().toISOString()},btn=ip$('program-save-btn');btn.disabled=true;
+ try{let pid=id;if(id){const {data,error}=await db.from('programs').update(payload).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw Error('Programme not found in this institution.');}else{const {data,error}=await db.from('programs').insert(payload).select('id').single();if(error)throw error;pid=data.id;}
+  const {data:rows,error:rErr}=await db.from('program_blocks').select('id,block_name,block_sequence,credit_hours,status').eq('program_id',pid).order('block_sequence');if(rErr)throw rErr;
+  for(let n=0;n<count;n++){const old=rows?.[n],name=old?.block_name||((ip$('program_structure').value==='term'?'Term ':'Block ')+(n+1)),p={block_name:name,block_sequence:n+1,status:'active',updated_at:new Date().toISOString()};const q=old?await db.from('program_blocks').update(p).eq('id',old.id):await db.from('program_blocks').insert({...p,program_id:pid,credit_hours:0});if(q.error)throw q.error;}
+  for(let n=count;n<(rows||[]).length;n++){const {error}=await db.from('program_blocks').update({status:'inactive',updated_at:new Date().toISOString()}).eq('id',rows[n].id);if(error)throw error;}
+  showToast('Programme and '+count+' stages saved.','success');resetInstitutionProgramForm();await loadInstitutionPrograms();
+ }catch(err){showToast('Could not save programme: '+err.message,'error');}finally{btn.disabled=false;}
 });
+async function loadInstitutionBlocks(){const pid=ipPid('ip_block_program'),host=ip$('ip_block_rows');if(!pid){host.innerHTML='<tr><td colspan="5">Select a programme.</td></tr>';return;}const {data,error}=await db.from('program_blocks').select('id,program_id,block_name,block_sequence,credit_hours,status').eq('program_id',pid).order('block_sequence');if(error){host.innerHTML='<tr><td colspan="5">'+ipEsc(error.message)+'</td></tr>';return;}institutionBlocksCache= institutionBlocksCache.filter(x=>x.program_id!==pid).concat(data||[]);host.innerHTML=(data||[]).map(b=>'<tr><td>'+b.block_sequence+'</td><td>'+ipEsc(b.block_name)+'</td><td>'+Number(b.credit_hours||0)+'</td><td>'+ipEsc(b.status)+'</td><td><button class="btn-sm btn-edit" onclick="editInstitutionBlock(\''+b.id+'\')">Edit</button> <button class="btn-sm btn-edit" onclick="toggleInstitutionBlock(\''+b.id+'\')">'+(b.status==='inactive'?'Activate':'Deactivate')+'</button></td></tr>').join('')||'<tr><td colspan="5">No stages configured.</td></tr>';ip$('ip_map_block').innerHTML='<option value="">Any / not specified</option>'+(data||[]).filter(x=>x.status!=='inactive').map(x=>'<option>'+ipEsc(x.block_name)+'</option>').join('');}
+window.editInstitutionBlock=id=>{const b=institutionBlocksCache.find(x=>x.id===id);if(!b)return;ip$('ip_block_edit_id').value=id;ip$('ip_block_name').value=b.block_name;ip$('ip_block_sequence').value=b.block_sequence;ip$('ip_block_credits').value=b.credit_hours||0;ip$('ip_block_status').value=b.status;};
+window.resetInstitutionBlockForm=()=>{ip$('ip_block_edit_id').value='';ip$('ip_block_name').value='';ip$('ip_block_sequence').value=1;ip$('ip_block_credits').value=0;ip$('ip_block_status').value='active';};
+window.saveInstitutionBlock=async()=>{const pid=ipPid('ip_block_program'),id=ip$('ip_block_edit_id').value,name=ip$('ip_block_name').value.trim();if(!pid||!name)return showToast('Select a programme and enter a name.','warning');const p={block_name:name,block_sequence:Math.max(1,Number(ip$('ip_block_sequence').value)||1),credit_hours:Math.max(0,Number(ip$('ip_block_credits').value)||0),status:ip$('ip_block_status').value,updated_at:new Date().toISOString()};try{const q=id?await db.from('program_blocks').update(p).eq('id',id).eq('program_id',pid):await db.from('program_blocks').insert({...p,program_id:pid});if(q.error)throw q.error;resetInstitutionBlockForm();await loadInstitutionBlocks();await loadInstitutionPrograms();showToast('Stage saved.','success');}catch(e){showToast(e.message,'error');}};
+window.toggleInstitutionBlock=async id=>{const b=institutionBlocksCache.find(x=>x.id===id);if(!b)return;try{const {error}=await db.from('program_blocks').update({status:b.status==='inactive'?'active':'inactive'}).eq('id',id);if(error)throw error;await loadInstitutionBlocks();await loadInstitutionPrograms();}catch(e){showToast(e.message,'error');}};
+async function loadInstitutionIntakes(){const pid=ipPid('ip_intake_program'),host=ip$('ip_intake_rows');if(!pid){host.innerHTML='<tr><td colspan="5">Select a programme.</td></tr>';return;}const {data,error}=await db.from('program_intakes').select('id,program_id,intake_name,intake_year,intake_month,start_date,end_date,status').eq('program_id',pid).order('intake_year',{ascending:false});if(error){host.innerHTML='<tr><td colspan="5">'+ipEsc(error.message)+'</td></tr>';return;}institutionIntakesCache=institutionIntakesCache.filter(x=>x.program_id!==pid).concat(data||[]);host.innerHTML=(data||[]).map(i=>'<tr><td>'+ipEsc(i.intake_name)+'</td><td>'+ipEsc(i.intake_year)+'</td><td>'+ipEsc(i.start_date||'—')+' – '+ipEsc(i.end_date||'—')+'</td><td>'+ipEsc(i.status)+'</td><td><button class="btn-sm btn-edit" onclick="editInstitutionIntake(\''+i.id+'\')">Edit</button></td></tr>').join('')||'<tr><td colspan="5">No intakes.</td></tr>';}
+window.editInstitutionIntake=id=>{const i=institutionIntakesCache.find(x=>x.id===id);if(!i)return;ip$('ip_intake_edit_id').value=id;ip$('ip_intake_program').value=i.program_id;ip$('ip_intake_name').value=i.intake_name;ip$('ip_intake_year').value=i.intake_year;ip$('ip_intake_month').value=i.intake_month||'';ip$('ip_intake_start').value=i.start_date||'';ip$('ip_intake_end').value=i.end_date||'';ip$('ip_intake_status').value=i.status;};
+window.resetInstitutionIntakeForm=()=>{ip$('ip_intake_edit_id').value='';ip$('ip_intake_name').value='';ip$('ip_intake_year').value=new Date().getFullYear();ip$('ip_intake_month').value='';ip$('ip_intake_start').value='';ip$('ip_intake_end').value='';ip$('ip_intake_status').value='upcoming';};
+window.saveInstitutionIntake=async()=>{const pid=ipPid('ip_intake_program'),id=ip$('ip_intake_edit_id').value,name=ip$('ip_intake_name').value.trim(),year=Number(ip$('ip_intake_year').value);if(!pid||!name||!year)return showToast('Programme, intake name and year are required.','warning');const p={program_id:pid,intake_name:name,intake_year:year,intake_month:ip$('ip_intake_month').value?Number(ip$('ip_intake_month').value):null,start_date:ip$('ip_intake_start').value||null,end_date:ip$('ip_intake_end').value||null,status:ip$('ip_intake_status').value,updated_at:new Date().toISOString()};if(p.start_date&&p.end_date&&p.end_date<p.start_date)return showToast('End date cannot be before start date.','warning');try{const q=id?await db.from('program_intakes').update(p).eq('id',id).eq('program_id',pid):await db.from('program_intakes').insert(p);if(q.error)throw q.error;resetInstitutionIntakeForm();await loadInstitutionIntakes();await loadInstitutionPrograms();showToast('Intake saved.','success');}catch(e){showToast(e.message,'error');}};
+async function loadInstitutionCoursesAndMappings(){const pid=ipPid('ip_map_program'),host=ip$('ip_mapping_rows');const {data:c,error:ce}=await db.from('courses').select('id,course_name,code,status').order('course_name');if(ce)throw ce;institutionCoursesCache=c||[];ip$('ip_map_course').innerHTML='<option value="">Select course / unit</option>'+institutionCoursesCache.map(x=>'<option value="'+ipEsc(x.id)+'">'+ipEsc((x.code?x.code+' — ':'')+x.course_name)+'</option>').join('');if(!pid){host.innerHTML='<tr><td colspan="4">Select a programme.</td></tr>';return;}const {data,error}=await db.from('program_courses').select('id,program_id,course_id,block_name,is_core').eq('program_id',pid);if(error)throw error;institutionMappingsCache=data||[];const cm=new Map(institutionCoursesCache.map(x=>[x.id,x]));host.innerHTML=institutionMappingsCache.map(m=>'<tr><td>'+ipEsc(cm.get(m.course_id)?.course_name||'Course')+'</td><td>'+ipEsc(m.block_name||'Any')+'</td><td>'+(m.is_core?'Core':'Elective')+'</td><td><button class="btn-sm btn-edit" onclick="editInstitutionMapping(\''+m.id+'\')">Edit</button> <button class="btn-sm btn-edit" onclick="deleteInstitutionMapping(\''+m.id+'\')">Remove</button></td></tr>').join('')||'<tr><td colspan="4">No mappings.</td></tr>';}
+window.editInstitutionMapping=id=>{const m=institutionMappingsCache.find(x=>x.id===id);if(!m)return;ip$('ip_map_edit_id').value=id;ip$('ip_map_program').value=m.program_id;ip$('ip_map_course').value=m.course_id;ip$('ip_map_block').value=m.block_name||'';ip$('ip_map_core').value=String(!!m.is_core);};
+window.resetInstitutionMappingForm=()=>{ip$('ip_map_edit_id').value='';ip$('ip_map_course').value='';ip$('ip_map_block').value='';ip$('ip_map_core').value='true';};
+window.saveInstitutionCourseMapping=async()=>{const pid=ipPid('ip_map_program'),id=ip$('ip_map_edit_id').value,cid=ip$('ip_map_course').value;if(!pid||!cid)return showToast('Select programme and course.','warning');const p={program_id:pid,course_id:cid,block_name:ip$('ip_map_block').value||null,is_core:ip$('ip_map_core').value==='true',updated_at:new Date().toISOString()};try{const q=id?await db.from('program_courses').update(p).eq('id',id).eq('program_id',pid):await db.from('program_courses').insert(p);if(q.error)throw q.error;resetInstitutionMappingForm();await loadInstitutionCoursesAndMappings();showToast('Course mapping saved.','success');}catch(e){showToast(e.message,'error');}};
+window.deleteInstitutionMapping=async id=>{const m=institutionMappingsCache.find(x=>x.id===id);if(!m||!confirm('Remove this course mapping?'))return;try{const {error}=await db.from('program_courses').delete().eq('id',id).eq('program_id',m.program_id);if(error)throw error;await loadInstitutionCoursesAndMappings();}catch(e){showToast(e.message,'error');}};
+['ip_block_program','ip_intake_program','ip_map_program'].forEach(id=>ip$(id)?.addEventListener('change',()=>{if(id==='ip_block_program')loadInstitutionBlocks();if(id==='ip_intake_program')loadInstitutionIntakes();if(id==='ip_map_program')loadInstitutionCoursesAndMappings();}));
 
 // ------------------------------------------------------------------
 // TABLE FILTERS & EXPORTS - COMPLETE
