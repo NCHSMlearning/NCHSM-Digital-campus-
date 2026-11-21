@@ -18,7 +18,20 @@
     ["members","Institution user assignments","0","Membership records","fa-users","#2563eb","#eff6ff"],
     ["modules","Enabled institution modules","0","Configured service modules","fa-layer-group","#0d9488","#f0fdfa"],
     ["subscriptions","Subscription records","0","Billing configuration records","fa-receipt","#7c3aed","#f5f3ff"],
-    ["audits","Platform audit events","0","Recorded platform actions","fa-shield-halved","#b45309","#fffbeb"]
+    ["audits","Platform audit events","0","Recorded platform actions","fa-shield-halved","#b45309","#fffbeb"],
+    ["students","Student profiles","—","All NCHSM student accounts","fa-user-graduate","#2563eb","#eff6ff"],
+    ["activeStudents","Active students","—","Approved and active accounts","fa-user-check","#059669","#ecfdf5"],
+    ["pendingStudents","Pending student approvals","—","Awaiting account approval","fa-user-clock","#d97706","#fffbeb"],
+    ["staff","Staff & lecturer profiles","—","Teaching and administrative accounts","fa-chalkboard-user","#0d9488","#f0fdfa"],
+    ["exams","Examinations","—","Examination records","fa-file-circle-check","#7c3aed","#f5f3ff"],
+    ["examAttempts","Exam attempts","—","Recorded candidate attempts","fa-clipboard-list","#2563eb","#eff6ff"],
+    ["questionBank","Question bank","—","Stored examination questions","fa-circle-question","#0d9488","#f0fdfa"],
+    ["marks","Marks records","—","Student marks and exam grades","fa-square-poll-vertical","#b45309","#fffbeb"],
+    ["attendance","Attendance records","—","Geo and examination attendance","fa-calendar-check","#059669","#ecfdf5"],
+    ["resources","Learning resources","—","Uploaded teaching resources","fa-book-open","#7c3aed","#f5f3ff"],
+    ["databaseStorage","Database storage","—","Live PostgreSQL database size","fa-database","#0f766e","#f0fdfa"],
+    ["fileStorage","File storage","—","Total Supabase Storage objects","fa-hard-drive","#2563eb","#eff6ff"],
+    ["proctoringStorage","Proctoring storage","—","Exam recording and evidence files","fa-video","#dc2626","#fef2f2"]
   ];
 
   function findGrid(id) {
@@ -227,6 +240,59 @@
     if(state.access.platformAdmin && (subscriptions.error || audits.error)) throw (subscriptions.error || audits.error);
     const safeSubscriptions = subscriptions.error ? [] : (subscriptions.data || []);
     const safeAudits = audits.error ? [] : (audits.data || []);
+
+    // Platform-wide academic and storage metrics are loaded only for the verified
+    // primary Super Admin. Institution administrators never receive these totals.
+    if (state.access.platformAdmin) {
+      const countMetric = async (table, filters = []) => {
+        let query = client.from(table).select("id", { count: "exact", head: true });
+        filters.forEach(([column, operator, value]) => {
+          query = operator === "in" ? query.in(column, value) : query.eq(column, value);
+        });
+        const result = await query;
+        if (result.error) throw result.error;
+        return Number(result.count || 0);
+      };
+      const metricTasks = {
+        students: () => countMetric("consolidated_user_profiles_table", [["role","eq","student"]]),
+        activeStudents: () => countMetric("consolidated_user_profiles_table", [["role","eq","student"],["status","in",["active","Active","approved","Approved"]]]),
+        pendingStudents: () => countMetric("consolidated_user_profiles_table", [["role","eq","student"],["status","in",["pending","Pending"]]]),
+        staff: () => countMetric("consolidated_user_profiles_table", [["role","in",["lecturer","admin","superadmin","super_admin","institution_admin","director","finance_officer","nursing_hod"]]]),
+        exams: () => countMetric("exams"),
+        examAttempts: () => countMetric("exam_attempts"),
+        questionBank: () => countMetric("exam_questions"),
+        marks: async () => (await Promise.all([countMetric("student_marks"),countMetric("exam_grades")])).reduce((a,b)=>a+b,0),
+        attendance: async () => (await Promise.all([countMetric("geo_attendance_logs"),countMetric("exam_attendance")])).reduce((a,b)=>a+b,0),
+        resources: () => countMetric("resources")
+      };
+      await Promise.all(Object.entries(metricTasks).map(async ([key, task]) => {
+        try { setPlatform(key, fmt(await task()), "Live NCHSMlearning database count"); }
+        catch (error) { console.warn("[Campus Nexus platform metric]", key, error.message); setPlatform(key, "—", "Unavailable · check database permissions"); }
+      }));
+      try {
+        const storage = await client.rpc("get_superadmin_storage_metrics");
+        if (storage.error) throw storage.error;
+        const rows = storage.data || [];
+        const buckets = rows.filter(row => row.bucket_id !== "__database__");
+        const bytes = buckets.reduce((sum,row)=>sum+Number(row.total_bytes||0),0);
+        const database = rows.find(row => row.bucket_id === "__database__");
+        const proctoring = rows.find(row => row.bucket_id === "proctoring");
+        const formatBytes = value => {
+          const n = Number(value || 0);
+          if (!n) return "0 B";
+          const units = ["B","KB","MB","GB","TB"];
+          const index = Math.min(Math.floor(Math.log(n)/Math.log(1024)), units.length-1);
+          return (n/Math.pow(1024,index)).toFixed(index >= 3 ? 2 : 1) + " " + units[index];
+        };
+        setPlatform("databaseStorage", formatBytes(database?.total_bytes), "Live PostgreSQL database size");
+        setPlatform("fileStorage", formatBytes(bytes), fmt(buckets.reduce((sum,row)=>sum+Number(row.object_count||0),0)) + " stored files");
+        setPlatform("proctoringStorage", formatBytes(proctoring?.total_bytes), fmt(proctoring?.object_count||0) + " proctoring objects");
+      } catch (error) {
+        console.warn("[Campus Nexus storage metrics]", error.message);
+        ["databaseStorage","fileStorage","proctoringStorage"].forEach(key=>setPlatform(key,"—","Storage metrics unavailable"));
+      }
+    }
+
     state.institutions = institutions.data || [];
     state.moduleMap = {};
     (modules.data || []).forEach(row => {
