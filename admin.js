@@ -1173,143 +1173,170 @@ document.getElementById('edit-user-form')?.addEventListener('submit', async func
 // ------------------------------------------------------------------
 // UNIT MANAGEMENT
 // ------------------------------------------------------------------
+async function loadInstitutionUnitProgramOptions() {
+    const programSelect = document.getElementById('new_unit_program');
+    if (!programSelect) return;
+    const previous = programSelect.value;
+    const { data, error } = await db.from('programs')
+        .select('id,program_code,program_name,structure_type')
+        .eq('status', 'active')
+        .order('program_name');
+    if (error) throw error;
+    institutionUnitPrograms = data || [];
+    programSelect.innerHTML = '<option value="">Select programme</option>' +
+        institutionUnitPrograms.map(p => '<option value="' + escapeHtml(p.program_code) +
+        '" data-program-id="' + escapeHtml(p.id) + '">' +
+        escapeHtml(p.program_code + ' — ' + p.program_name) + '</option>').join('');
+    if (previous && institutionUnitPrograms.some(p => p.program_code === previous)) programSelect.value = previous;
+    else if (institutionUnitPrograms.length === 1) programSelect.value = institutionUnitPrograms[0].program_code;
+    const filter = document.getElementById('unit_filter_program');
+    if (filter) {
+        const oldFilter = filter.value;
+        filter.innerHTML = '<option value="">All Programmes</option>' + institutionUnitPrograms.map(p =>
+            '<option value="' + escapeHtml(p.program_code) + '">' + escapeHtml(p.program_code) + '</option>').join('');
+        if (oldFilter && institutionUnitPrograms.some(p => p.program_code === oldFilter)) filter.value = oldFilter;
+    }
+    await updateInstitutionUnitStageOptions();
+}
+let institutionUnitPrograms = [];
+async function updateInstitutionUnitStageOptions() {
+    const programSelect = document.getElementById('new_unit_program');
+    const stageSelect = document.getElementById('new_unit_block');
+    if (!programSelect || !stageSelect) return;
+    const selected = institutionUnitPrograms.find(p => p.program_code === programSelect.value);
+    if (!selected) {
+        stageSelect.innerHTML = '<option value="">Select programme first</option>';
+        return;
+    }
+    let stages = [];
+    const { data, error } = await db.from('program_blocks')
+        .select('block_name,block_sequence,status')
+        .eq('program_id', selected.id).eq('status', 'active')
+        .order('block_sequence');
+    if (error) throw error;
+    stages = (data || []).map(x => x.block_name);
+    if (!stages.length) {
+        const structure = String(selected.structure_type || '').toLowerCase();
+        const label = structure.includes('semester') ? 'Semester' : structure.includes('term') ? 'Term' : 'Block';
+        stages = [1,2,3,4,5,6].map(n => label + ' ' + n);
+    }
+    stageSelect.innerHTML = stages.map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>').join('');
+}
+
 async function loadAllUnits() {
-    var container = document.getElementById('units-list-container');
+    const container = document.getElementById('units-list-container');
     if (!container) return;
-    
-    container.innerHTML = '<div class="loading-spinner"></div><p>Loading units...</p>';
-    
+    container.innerHTML = '<div class="loading-spinner"></div><p>Loading institution units...</p>';
     if (!db) return;
-    
     try {
-        const { data, error } = await db.from('units_catalog').select('*').order('block').order('unit_code');
-        
+        await loadInstitutionUnitProgramOptions();
+        const { data, error } = await db.from('units_catalog').select('*')
+            .order('year').order('block').order('unit_code');
         if (error) throw error;
-        
         allUnitsList = data || [];
         renderUnitList();
-        
-        // Also refresh available units for assignment
         await loadAvailableUnitsForAssignment();
-        
-        // Update unit count
         const countEl = document.getElementById('unitCountDisplay');
         if (countEl) countEl.textContent = allUnitsList.length;
-        
     } catch(err) {
-        container.innerHTML = '<p style="color: #dc2626;">Error loading units: ' + err.message + '</p>';
+        container.innerHTML = '<p style="color:#dc2626;">Error loading institution units: ' + escapeHtml(err.message) + '</p>';
     }
 }
 
 function renderUnitList() {
-    var container = document.getElementById('units-list-container');
+    const container = document.getElementById('units-list-container');
     if (!container) return;
-    
-    var searchTerm = document.getElementById('unit_search')?.value.toLowerCase() || '';
-    var programFilter = document.getElementById('unit_filter_program')?.value || '';
-    
-    var filtered = [];
-    for (var i = 0; i < allUnitsList.length; i++) {
-        var u = allUnitsList[i];
-        
-        if (searchTerm && !u.unit_code.toLowerCase().includes(searchTerm) && !u.unit_name.toLowerCase().includes(searchTerm)) {
-            continue;
-        }
-        if (programFilter && programFilter !== 'TVET' && u.program !== programFilter) continue;
-        if (programFilter === 'TVET' && !isTVETProgram(u.program)) continue;
-        if (selectedBlock !== 'all' && u.block !== selectedBlock) continue;
-        
-        filtered.push(u);
-    }
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 40px 0;">No units found</p>';
+    const searchTerm = document.getElementById('unit_search')?.value.toLowerCase() || '';
+    const programFilter = document.getElementById('unit_filter_program')?.value || '';
+    const filtered = allUnitsList.filter(u => {
+        const code = String(u.unit_code || '').toLowerCase();
+        const name = String(u.unit_name || '').toLowerCase();
+        if (searchTerm && !code.includes(searchTerm) && !name.includes(searchTerm)) return false;
+        if (programFilter && programFilter !== 'TVET' && u.program !== programFilter) return false;
+        if (programFilter === 'TVET' && !isTVETProgram(u.program)) return false;
+        if (selectedBlock !== 'all' && u.block !== selectedBlock) return false;
+        return true;
+    });
+    if (!filtered.length) {
+        container.innerHTML = '<p style="color:#6b7280;text-align:center;padding:40px 0;">No units found for this institution/programme.</p>';
         return;
     }
-    
-    var html = '<div class="units-grid">';
-    for (var i = 0; i < filtered.length; i++) {
-        var u = filtered[i];
-        var programName = getProgramDisplayName(u.program);
-        var blockTermLabel = getBlockTermLabel(u.program);
-        
+    let html = '<div class="units-grid">';
+    filtered.forEach(u => {
+        const clinical = /clinical|placement/i.test(String(u.unit_type || '')) || /^CP/i.test(String(u.unit_code || ''));
         html += '<div class="unit-card">';
-        html += '<div class="unit-header">';
-        html += '<span class="unit-code">' + escapeHtml(u.unit_code) + '</span>';
-        html += '<span class="unit-name">' + escapeHtml(u.unit_name) + '</span>';
-        html += '</div>';
+        html += '<div class="unit-header"><span class="unit-code">' + escapeHtml(u.unit_code) + '</span><span class="unit-name">' + escapeHtml(u.unit_name) + '</span></div>';
         html += '<div class="unit-meta">';
-        html += '<span><i class="fas fa-graduation-cap"></i> ' + escapeHtml(programName) + '</span>';
-        html += '<span><i class="fas fa-layer-group"></i> ' + blockTermLabel + ': ' + escapeHtml(u.block) + '</span>';
-        html += '<span><i class="fas fa-calendar"></i> ' + (u.year || 'N/A') + '</span>';
-        html += '<span><i class="fas fa-star"></i> ' + (u.credits || 3) + ' Credits</span>';
+        html += '<span><i class="fas fa-graduation-cap"></i> ' + escapeHtml(u.program || '—') + '</span>';
+        html += '<span><i class="fas fa-layer-group"></i> ' + escapeHtml(u.block || '—') + '</span>';
+        html += '<span><i class="fas fa-calendar"></i> Year ' + escapeHtml(u.year || '—') + '</span>';
+        html += '<span><i class="fas fa-book"></i> ' + escapeHtml(u.unit_type || 'Core') + '</span>';
+        html += '<span>Theory: ' + Number(u.theory_hours || 0) + ' hrs</span>';
+        html += '<span>Practical: ' + Number(u.practical_hours || 0) + ' hrs</span>';
+        html += '<span><strong>Total: ' + Number(u.total_hours || u.hours || 0) + ' hrs</strong></span>';
+        if (clinical || Number(u.clinical_weeks || 0) > 0) html += '<span>Clinical duration: ' + Number(u.clinical_weeks || 0) + ' weeks</span>';
         html += '</div></div>';
-    }
+    });
     html += '</div>';
-    
     container.innerHTML = html;
 }
 
 window.filterUnitsByBlock = function(block) {
     selectedBlock = block;
-    
-    var btns = document.querySelectorAll('.block-btn');
-    for (var i = 0; i < btns.length; i++) {
-        btns[i].classList.remove('active');
-        if (btns[i].getAttribute('data-block') === block) {
-            btns[i].classList.add('active');
-        }
-    }
-    
+    document.querySelectorAll('.block-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-block') === block);
+    });
     renderUnitList();
 };
-
-window.filterUnitsCatalog = function() {
-    renderUnitList();
-};
+window.filterUnitsCatalog = function() { renderUnitList(); };
 
 window.addNewUnitRecord = async function() {
-    var unitCode = document.getElementById('new_unit_code').value;
-    var unitName = document.getElementById('new_unit_name').value;
-    var program = document.getElementById('new_unit_program').value;
-    var block = document.getElementById('new_unit_block').value;
-    var year = parseInt(document.getElementById('new_unit_year').value);
-    var credits = parseInt(document.getElementById('new_unit_credits').value);
-    var hours = parseInt(document.getElementById('new_unit_hours').value);
-    var unitType = document.getElementById('new_unit_type').value;
-    var prerequisites = document.getElementById('new_unit_prerequisites').value || null;
-    
-    if (!unitCode || !unitName) {
-        showToast('Please fill in Unit Code and Unit Name', 'warning');
+    const unitCode = document.getElementById('new_unit_code').value.trim().toUpperCase();
+    const unitName = document.getElementById('new_unit_name').value.trim();
+    const program = document.getElementById('new_unit_program').value;
+    const block = document.getElementById('new_unit_block').value;
+    const year = Number(document.getElementById('new_unit_year').value);
+    const theory = Number(document.getElementById('new_unit_theory_hours').value || 0);
+    const practical = Number(document.getElementById('new_unit_practical_hours').value || 0);
+    const total = Number(document.getElementById('new_unit_total_hours').value || theory + practical);
+    const clinicalWeeks = Number(document.getElementById('new_unit_clinical_weeks').value || 0);
+    const credits = Number(document.getElementById('new_unit_credits').value || 0);
+    const unitType = document.getElementById('new_unit_type').value;
+    const prerequisites = document.getElementById('new_unit_prerequisites').value.trim() || null;
+    if (!unitCode || !unitName || !program || !block || !year) {
+        showToast('Complete the unit code, name, programme, year and semester/block.', 'warning');
         return;
     }
-    
+    if (total !== theory + practical && !clinicalWeeks) {
+        showToast('Total hours must equal theory hours plus practical hours.', 'warning');
+        return;
+    }
     try {
-        const { error } = await db.from('units_catalog').insert([{
-            unit_code: unitCode,
-            unit_name: unitName,
-            program: program,
-            block: block,
-            year: year,
-            credits: credits,
-            hours: hours,
-            unit_type: unitType,
-            prerequisites: prerequisites,
-            status: 'active'
-        }]);
-        
+        const { data: existing, error: checkError } = await db.from('units_catalog')
+            .select('id').eq('unit_code', unitCode).eq('program', program)
+            .eq('block', block).eq('year', year).maybeSingle();
+        if (checkError) throw checkError;
+        if (existing) throw new Error('This unit code already exists for the selected programme, year and semester/block at your institution.');
+        const payload = {
+            unit_code: unitCode, unit_name: unitName, program, block, term: block,
+            year, credits, hours: total, theory_hours: theory,
+            practical_hours: practical, total_hours: total,
+            clinical_weeks: clinicalWeeks || null,
+            unit_type: unitType, prerequisites, status: 'active',
+            description: clinicalWeeks ? 'Supervised clinical placement' : null,
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        };
+        const { error } = await db.from('units_catalog').insert([payload]);
         if (error) throw error;
-        
-        showToast('✅ Unit "' + unitCode + '" added successfully!', 'success');
-        document.getElementById('new_unit_code').value = '';
-        document.getElementById('new_unit_name').value = '';
-        document.getElementById('new_unit_prerequisites').value = '';
-        loadAllUnits();
-        
+        showToast('Unit ' + unitCode + ' added to this institution curriculum.', 'success');
+        ['new_unit_code','new_unit_name','new_unit_prerequisites'].forEach(id => document.getElementById(id).value = '');
+        ['new_unit_theory_hours','new_unit_practical_hours','new_unit_total_hours','new_unit_clinical_weeks'].forEach(id => document.getElementById(id).value = '0');
+        await loadAllUnits();
     } catch(err) {
         showToast('Error adding unit: ' + err.message, 'error');
     }
 };
+document.getElementById('new_unit_program')?.addEventListener('change', updateInstitutionUnitStageOptions);
 
 // ====================================================================
 // LECTURER UNIT ASSIGNMENT - COMPLETE IMPLEMENTATION
