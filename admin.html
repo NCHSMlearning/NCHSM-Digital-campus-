@@ -1689,71 +1689,38 @@
             <!-- UNIT REGISTRATION SECTION                                      -->
             <!-- ============================================================ -->
             <section id="unit-management" class="tab-content">
-                <h2><i class="fas fa-plus-circle"></i> Unit Registration Management</h2>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-                    <h3><i class="fas fa-plus"></i> Add New Unit</h3>
+                <h2><i class="fas fa-book-open"></i> Institution Curriculum & Unit Catalogue</h2>
+                <p style="color:#64748b;margin:0 0 18px;">Manage units belonging to your institution. Unit codes may be reused by other schools; uniqueness is enforced within your institution, programme, year and semester/block.</p>
+                <div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:25px;">
+                    <h3><i class="fas fa-plus"></i> Add Curriculum Unit</h3>
                     <div class="unit-form-row">
-                        <input type="text" id="new_unit_code" placeholder="Unit Code" required>
+                        <input type="text" id="new_unit_code" placeholder="Unit Code (e.g. BSS 111)" required>
                         <input type="text" id="new_unit_name" placeholder="Unit Name" required>
-                        <select id="new_unit_program">
-                            <option value="KRCHN">KRCHN</option>
-                            <optgroup label="TVET">
-                                <option value="DPOTT">DPOTT</option><option value="DCH">DCH</option>
-                                <option value="DHRIT">DHRIT</option><option value="DSL">DSL</option>
-                                <option value="DSW">DSW</option><option value="DCJS">DCJS</option>
-                                <option value="DHSS">DHSS</option><option value="DICT">DICT</option>
-                                <option value="DME">DME</option><option value="CPOTT">CPOTT</option>
-                                <option value="CCH">CCH</option><option value="CHRIT">CHRIT</option>
-                                <option value="CPC">CPC</option><option value="CSL">CSL</option>
-                                <option value="CSW">CSW</option><option value="CCJS">CCJS</option>
-                                <option value="CAG">CAG</option><option value="CHSS">CHSS</option>
-                                <option value="CICT">CICT</option><option value="ACH">ACH</option>
-                                <option value="AAG">AAG</option><option value="ASW">ASW</option>
-                                <option value="CCA">CCA</option><option value="PTE">PTE</option>
-                            </optgroup>
-                        </select>
-                        <select id="new_unit_block">
-                            <option value="Introductory">Introductory</option>
-                            <option value="Block 1">Block 1</option>
-                            <option value="Block 2">Block 2</option>
-                            <option value="Block 3">Block 3</option>
-                            <option value="Block 4">Block 4</option>
-                            <option value="Final">Final</option>
-                        </select>
-                        <input type="number" id="new_unit_year" placeholder="Year" value="2025" min="2024" max="2028">
-                        <input type="number" id="new_unit_credits" placeholder="Credits" value="3">
-                        <input type="number" id="new_unit_hours" placeholder="Hours" value="0">
-                        <select id="new_unit_type"><option value="Core">Core</option><option value="Elective">Elective</option></select>
-                        <input type="text" id="new_unit_prerequisites" placeholder="Prerequisites">
+                        <select id="new_unit_program" required><option value="">Loading institution programmes…</option></select>
+                        <select id="new_unit_block" required><option value="">Select programme first</option></select>
+                        <select id="new_unit_year" required><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select>
+                        <input type="number" id="new_unit_theory_hours" placeholder="Theory hours" min="0" value="0">
+                        <input type="number" id="new_unit_practical_hours" placeholder="Practical hours" min="0" value="0">
+                        <input type="number" id="new_unit_total_hours" placeholder="Total hours" min="0" value="0">
+                        <input type="number" id="new_unit_clinical_weeks" placeholder="Clinical weeks (if applicable)" min="0" step="0.5" value="0">
+                        <input type="number" id="new_unit_credits" placeholder="Credits" min="0" value="0">
+                        <select id="new_unit_type"><option value="Core">Core</option><option value="Elective">Elective</option><option value="Clinical Placement">Clinical Placement</option></select>
+                        <input type="text" id="new_unit_prerequisites" placeholder="Prerequisites (optional)">
                     </div>
-                    <button onclick="addNewUnitRecord()" class="btn-action">Add Unit</button>
+                    <button type="button" onclick="addNewUnitRecord()" class="btn-action">Add Unit to Curriculum</button>
                 </div>
-                
                 <div class="filter-bar">
-                    <input type="text" id="unit_search" placeholder="Search units...">
-                    <select id="unit_filter_program">
-                        <option value="">All Programs</option>
-                        <option value="KRCHN">KRCHN</option>
-                        <option value="TVET">TVET</option>
-                    </select>
-                    <button onclick="loadAllUnits()" class="btn-action">Refresh</button>
+                    <input type="text" id="unit_search" placeholder="Search unit code or name..." oninput="filterUnitsCatalog()">
+                    <select id="unit_filter_program" onchange="filterUnitsCatalog()"><option value="">All Programmes</option></select>
+                    <button type="button" onclick="loadAllUnits()" class="btn-action">Refresh</button>
+                    <span id="unitCountDisplay"></span>
                 </div>
-                
                 <div class="block-buttons">
                     <button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')">All</button>
-                    <button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')">Introductory</button>
-                    <button class="block-btn" data-block="Block 1" onclick="filterUnitsByBlock('Block 1')">Block 1</button>
-                    <button class="block-btn" data-block="Block 2" onclick="filterUnitsByBlock('Block 2')">Block 2</button>
-                    <button class="block-btn" data-block="Block 3" onclick="filterUnitsByBlock('Block 3')">Block 3</button>
-                    <button class="block-btn" data-block="Block 4" onclick="filterUnitsByBlock('Block 4')">Block 4</button>
-                    <button class="block-btn" data-block="Final" onclick="filterUnitsByBlock('Final')">Final</button>
+                    <button class="block-btn" data-block="Semester 1" onclick="filterUnitsByBlock('Semester 1')">Semester 1</button>
+                    <button class="block-btn" data-block="Semester 2" onclick="filterUnitsByBlock('Semester 2')">Semester 2</button>
                 </div>
-                
-                <div class="units-grid" id="units-list-container">
-                    <div class="loading-spinner"></div>
-                    <p>Loading units...</p>
-                </div>
+                <div class="units-grid" id="units-list-container"><div class="loading-spinner"></div><p>Loading units...</p></div>
             </section>
 
             <!-- ============================================================ -->
