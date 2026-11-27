@@ -51,12 +51,12 @@
         // ✅ Get year mapping for program
         getYearMapping: function(programCode, blockName) {
             const normalized = String(blockName || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
-            const explicitYear = normalized.match(/year\\s*(\\d+)/i);
+            const explicitYear = normalized.match(/year\s*(\d+)/i);
             if (explicitYear) {
                 const yearNum = Math.max(1, parseInt(explicitYear[1], 10));
                 return { year: yearNum - 1, label: `Year ${yearNum}` };
             }
-            const period = normalized.match(/(semester|term|block)\\s*(\\d+)/i);
+            const period = normalized.match(/(semester|term|block)\s*(\d+)/i);
             if (period) {
                 const n = Math.max(1, parseInt(period[2], 10));
                 const perYear = period[1] === 'term' ? 3 : 2;
@@ -604,7 +604,7 @@
             cat2: assessments.cat2,
             final_exam: assessments.finalExam,
             total: score,
-            block: mark.block || mark.block_term || mark.term || 'General',
+            block: mark.block || mark.block_term || mark.term || mark.semester || mark.period || 'General',
             academic_year: mark.academic_year || mark.year || ''
         };
     }
@@ -1493,13 +1493,21 @@ function loadTranscript() {
     // ✅ Group marks by block
     const groupedByBlock = {};
     marksData.forEach(m => {
-        const block = m.block || 'General';
+        const block = m.block || m.block_term || m.term || m.semester || m.period || 'General';
         if (!groupedByBlock[block]) {
             groupedByBlock[block] = [];
         }
         groupedByBlock[block].push(m);
     });
-    const blockNames = Object.keys(groupedByBlock).sort();
+    const blockNames = Object.keys(groupedByBlock).sort((a, b) => {
+        const order = value => {
+            const label = String(value || '').toLowerCase();
+            if (label.includes('introductory')) return 0;
+            const match = label.match(/(?:semester|term|block)\s*(\d+)/i);
+            return match ? Number(match[1]) : (label.includes('final') || label.includes('fqe') ? 999 : 500);
+        };
+        return order(a) - order(b) || String(a).localeCompare(String(b));
+    });
     
     let totalCreditsAttempted = 0;
     let totalCreditsEarned = 0;
@@ -1748,7 +1756,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const storedStatus = String(m.status || m.published_status || m.result_status || '').toUpperCase();
             const status = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'].includes(storedStatus)
                 ? storedStatus : (score !== null ? getGradingStatus(score, userProgram) : 'PENDING');
-            return `<tr><td>${i+1}</td><td>${escapeHtml(m.block || m.block_term || 'General')}</td><td>${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td><td>${escapeHtml(m.subject_name || 'N/A')}</td><td>${Number(m.credits || 3)}</td><td>${score === null ? 'Pending' : score.toFixed(1)}</td><td>${escapeHtml(grade)}</td><td>${points === null ? '—' : points.toFixed(1)}</td><td>${escapeHtml(status)}</td></tr>`;
+            return `<tr><td>${i+1}</td><td>${escapeHtml(m.block || m.block_term || m.term || m.semester || m.period || 'General')}</td><td>${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td><td>${escapeHtml(m.subject_name || 'N/A')}</td><td>${Number(m.credits || 3)}</td><td>${score === null ? 'Pending' : score.toFixed(1)}</td><td>${escapeHtml(grade)}</td><td>${points === null ? '—' : points.toFixed(1)}</td><td>${escapeHtml(status)}</td></tr>`;
         }).join('');
         const gpa = calculateGPA(marksData);
         const w = window.open('', '_blank', 'width=1100,height=800');
@@ -1808,7 +1816,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         if (Array.isArray(myMarksData) && myMarksData.length) {
             marks = [...myMarksData];
             if (blockFilter !== 'all') {
-                marks = marks.filter(m => normalizeBlock(m.block || m.block_term || m.term) === normalizeBlock(blockFilter));
+                marks = marks.filter(m => normalizeBlock(m.block || m.block_term || m.term || m.semester || m.period) === normalizeBlock(blockFilter));
             }
             if (subjectFilter !== 'all') marks = marks.filter(m => m.subject_name === subjectFilter);
             if (yearFilter !== 'all') marks = marks.filter(m => String(m.academic_year || m.year || '') === yearFilter);
@@ -1823,17 +1831,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const blockOrder = value => {
             const label = normalizeBlock(value);
             if (/introductory/.test(label)) return 0;
-            const match = label.match(/(?:block|term)\s*(\d+)/i);
+            const match = label.match(/(?:semester|block|term)\s*(\d+)/i);
             if (match) return Number(match[1]);
             if (/final/.test(label)) return 99;
             return -1;
         };
         if (!blockFilter || blockFilter.toLowerCase() === 'all') {
-            const availableBlocks = [...new Set(marks.map(m => m.block || m.block_term || m.term).filter(Boolean))];
+            const availableBlocks = [...new Set(marks.map(m => m.block || m.block_term || m.term || m.semester || m.period).filter(Boolean))];
             if (availableBlocks.length) {
                 availableBlocks.sort((a, b) => blockOrder(a) - blockOrder(b));
                 blockFilter = availableBlocks[availableBlocks.length - 1];
-                marks = marks.filter(m => normalizeBlock(m.block || m.block_term || m.term) === normalizeBlock(blockFilter));
+                marks = marks.filter(m => normalizeBlock(m.block || m.block_term || m.term || m.semester || m.period) === normalizeBlock(blockFilter));
             }
         }
         const transcriptResultsHeading = blockFilter && blockFilter.toLowerCase() !== 'all'
