@@ -4,7 +4,7 @@
 // INDICATOR: ☆ (hollow star) - subtle, only appears on retaken units in My Performance
 // NO DEMO DATA - ONLY REAL DATA FROM DATABASE
 // RETAKE SUMMARY REMOVED FROM PROVISIONAL ACADEMIC TRANSCRIPT DOWNLOAD
-// ACADEMIC YEAR MAPPING: KRCHN (3 years), TVET Cert (1 year), TVET Diploma (2 years)
+// ACADEMIC PERIODS: programme-configured semesters, terms or blocks
 // "Proceed to next block" message on transcript
 // ============================================================
 (function() {
@@ -14,8 +14,12 @@
     console.log('☆ Hollow Star Indicator: ENABLED (subtle)');
 
     // ============================================================
-    // 1. PROGRAM DETECTION
+    // 1. PROGRAM / INSTITUTION ACADEMIC STRUCTURE
     // ============================================================
+    // Programme period configuration is authoritative: institutions may use
+    // semesters, terms or blocks independently of the programme's subject area.
+    let academicStructureConfig = { type: 'block', label: 'Block', stages: [], programId: null };
+
     const PROGRAM = {
         isTVET: function(programCode) {
             if (!programCode) return false;
@@ -27,14 +31,13 @@
         },
         
         getBlockLabel: function(programCode) {
-            return this.isTVET(programCode) ? 'Term' : 'Block';
+            return academicStructureConfig.label || (this.isTVET(programCode) ? 'Term' : 'Block');
         },
         
         getBlockOptions: function(programCode) {
-            if (this.isTVET(programCode)) {
-                return ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
-            }
-            return ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'FQE', 'Final'];
+            if (academicStructureConfig.stages && academicStructureConfig.stages.length) return [...academicStructureConfig.stages];
+            if (this.isTVET(programCode)) return ['Introductory Term', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Term 7', 'Term 8', 'Term 9', 'Final'];
+            return ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'FQE', 'Final'];
         },
         
         getProgramType: function(programCode) {
@@ -47,42 +50,26 @@
         
         // ✅ Get year mapping for program
         getYearMapping: function(programCode, blockName) {
-            const code = String(programCode).toUpperCase().trim();
-            
-            // KRCHN annual structure:
-            // Year 1: Introductory + Block 1
-            // Year 2: Block 2 + Block 3
-            // Year 3: Block 4 + Block 5 + FQE (legacy "Final" is treated as FQE).
-            const normalizedBlock = String(blockName || '').trim().toLowerCase();
-            const nursingMapping = {
+            const normalized = String(blockName || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+            const explicitYear = normalized.match(/year\\s*(\\d+)/i);
+            if (explicitYear) {
+                const yearNum = Math.max(1, parseInt(explicitYear[1], 10));
+                return { year: yearNum - 1, label: `Year ${yearNum}` };
+            }
+            const period = normalized.match(/(semester|term|block)\\s*(\\d+)/i);
+            if (period) {
+                const n = Math.max(1, parseInt(period[2], 10));
+                const perYear = period[1] === 'term' ? 3 : 2;
+                const yearIndex = Math.floor((n - 1) / perYear);
+                return { year: yearIndex, label: `Year ${yearIndex + 1}` };
+            }
+            const legacy = {
                 'introductory': { year: 0, label: 'Year 1' },
-                'block 1': { year: 0, label: 'Year 1' },
-                'block 2': { year: 1, label: 'Year 2' },
-                'block 3': { year: 1, label: 'Year 2' },
-                'block 4': { year: 2, label: 'Year 3' },
-                'block 5': { year: 2, label: 'Year 3' },
+                'introductory term': { year: 0, label: 'Year 1' },
                 'fqe': { year: 2, label: 'Year 3' },
                 'final': { year: 2, label: 'Year 3' }
             };
-            return nursingMapping[normalizedBlock] || { year: 0, label: 'Year 1' };
-            
-            // TVET: Extract year from block name
-            const yearMatch = blockName.match(/Year\s+(\d+)/i);
-            if (yearMatch) {
-                const yearNum = parseInt(yearMatch[1]);
-                return { year: yearNum - 1, label: `Year ${yearNum}` };
-            }
-            
-            // Default fallback
-            const numMatch = blockName.match(/\d+/);
-            if (numMatch) {
-                const num = parseInt(numMatch[0]);
-                if (num <= 1) return { year: 0, label: 'Year 1' };
-                if (num <= 3) return { year: 1, label: 'Year 2' };
-                return { year: 2, label: 'Year 3' };
-            }
-            
-            return { year: 0, label: 'Year 1' };
+            return legacy[normalized] || { year: 0, label: 'Year 1' };
         },
         
         // ✅ Get academic year range
@@ -129,6 +116,82 @@
                 timer = setTimeout(() => reject(new Error(label + ' timed out. Check your connection and refresh.')), timeoutMs);
             })
         ]).finally(() => clearTimeout(timer));
+    }
+
+    async function loadStudentAcademicStructure(user) {
+        const profile = user || {};
+        const supabase = window.db && window.db.supabase;
+        const programId = profile.program_id || profile.programId || null;
+        const institutionId = profile.institution_id || profile.institutionId || null;
+        let programRow = null;
+
+        if (supabase && programId) {
+            try {
+                const result = await withAcademicTimeout(
+                    supabase.from('programs').select('id,program_code,program_name,structure_type')
+                        .eq('id', programId).maybeSingle(),
+                    8000, 'Programme structure request'
+                );
+                if (!result.error) programRow = result.data || null;
+                else console.warn('[Academic Reports] Programme structure lookup:', result.error.message);
+            } catch (error) {
+                console.warn('[Academic Reports] Programme structure lookup failed:', error.message);
+            }
+        } else if (supabase && profile.program && institutionId) {
+            try {
+                const result = await withAcademicTimeout(
+                    supabase.from('programs').select('id,program_code,program_name,structure_type')
+                        .eq('program_code', profile.program).eq('institution_id', institutionId).maybeSingle(),
+                    8000, 'Programme structure request'
+                );
+                if (!result.error) programRow = result.data || null;
+            } catch (error) {
+                console.warn('[Academic Reports] Programme structure lookup failed:', error.message);
+            }
+        }
+
+        const resolvedProgramId = (programRow && programRow.id) || programId;
+        let stages = [];
+        if (supabase && resolvedProgramId) {
+            try {
+                const result = await withAcademicTimeout(
+                    supabase.from('program_blocks')
+                        .select('block_name,block_sequence,status')
+                        .eq('program_id', resolvedProgramId)
+                        .order('block_sequence', { ascending: true }),
+                    8000, 'Programme periods request'
+                );
+                if (!result.error) stages = (result.data || [])
+                    .filter(row => String(row.status || 'active').toLowerCase() !== 'inactive')
+                    .map(row => String(row.block_name || '').trim()).filter(Boolean);
+                else console.warn('[Academic Reports] Programme periods lookup:', result.error.message);
+            } catch (error) {
+                console.warn('[Academic Reports] Programme periods lookup failed:', error.message);
+            }
+        }
+
+        const declaredType = String(
+            (programRow && programRow.structure_type) ||
+            profile.structure_type || profile.academic_structure || profile.program_structure || ''
+        ).toLowerCase();
+        const sample = stages.join(' ');
+        const type = declaredType.includes('semester') || /semester/i.test(sample) ? 'semester'
+            : declaredType.includes('term') || /term/i.test(sample) ? 'term'
+            : declaredType.includes('block') || /block/i.test(sample) ? 'block'
+            : (PROGRAM.isTVET(profile.program) ? 'term' : 'block');
+
+        if (!stages.length && type === 'semester') stages = ['Semester 1','Semester 2','Semester 3','Semester 4','Semester 5','Semester 6'];
+        if (!stages.length && type === 'term') stages = ['Introductory Term','Term 1','Term 2','Term 3','Term 4','Term 5','Term 6','Term 7','Term 8','Term 9','Final'];
+        if (!stages.length && type === 'block') stages = ['Introductory','Block 1','Block 2','Block 3','Block 4','Block 5','Block 6','FQE','Final'];
+
+        academicStructureConfig = {
+            type,
+            label: type === 'semester' ? 'Semester' : type === 'term' ? 'Term' : 'Block',
+            stages,
+            programId: resolvedProgramId || null
+        };
+        console.info('[Academic Reports] Academic structure loaded:', type, stages);
+        return academicStructureConfig;
     }
 
     async function fetchUnitCodes() {
@@ -596,6 +659,7 @@
             
             const registrationNumber = user.admission_number || user.student_id || user.user_id;
             const userProgram = user.program || '';
+            await loadStudentAcademicStructure(user);
             
             const nameEl = document.getElementById('my_marks_student_name');
             if (nameEl) nameEl.textContent = user.full_name || 'Student';
@@ -808,8 +872,7 @@
         const filter = document.getElementById('my_marks_block_filter');
         if (!filter) return;
         
-        const isTVET = PROGRAM.isTVET(program);
-        const label = isTVET ? 'Terms' : 'Blocks';
+        const label = PROGRAM.getBlockLabel(program) + 's';
         const options = PROGRAM.getBlockOptions(program);
         
         filter.innerHTML = `<option value="all">All ${label}</option>`;
@@ -1448,6 +1511,7 @@ function loadTranscript() {
     
     const isTVET = PROGRAM.isTVET(userProgram);
     const passThreshold = isTVET ? 50 : 60;
+    const periodLabel = PROGRAM.getBlockLabel(userProgram);
     
     // ✅ Build transcript HTML
     let html = '';
@@ -1574,7 +1638,7 @@ function loadTranscript() {
         html += `
             <tr style="background: #f1f5f9; border-top: 2px solid #1E559B;">
                 <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b;">
-                    <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
+                    <strong>${escapeHtml(periodLabel)} Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
                 </td>
                 <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b; text-align: right;">
                     ${blockAcademicYear.display}
@@ -1693,7 +1757,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#1E559B;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1E559B;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}table tbody td:nth-child(3),table tbody td:nth-child(8),table tbody td:nth-child(3) *,table tbody td:nth-child(8) *{color:#000!important;font-weight:900!important;-webkit-text-fill-color:#000!important}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
         <h1>Nakuru College of Health Sciences and Management</h1><h2>Academic Transcript</h2>
         <div class="meta"><div><b>Student:</b> ${escapeHtml(user.full_name || 'Student')}</div><div><b>Admission:</b> ${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div><div><b>Program:</b> ${escapeHtml(userProgram || 'N/A')}</div></div>
-        <table><thead><tr><th>#</th><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Grade Points</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+        <table><thead><tr><th>#</th><th>${escapeHtml(PROGRAM.getBlockLabel(userProgram))}</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Grade Points</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
         <div class="summary">Cumulative GPA: ${gpa.toFixed(2)} &nbsp; | &nbsp; Units: ${marksData.length}</div>
         <div class="no-print" style="text-align:center;margin-top:25px"><button onclick="window.print()">Print / Save as PDF</button></div>
         </body></html>`);
@@ -1715,7 +1779,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         // Signature roles follow the student's program: KRCHN uses Nursing; all other programs use TVET.
         const transcriptSchool = normalizedProgramCode === 'KRCHN' ? 'School of Nursing' : 'School of TVET';
         const transcriptIntakeYear = user.intake_year || user.admission_year || '';
-        const transcriptCurrentBlock = user.current_block || user.block || '';
+        const transcriptCurrentBlock = user.current_semester || user.current_term || user.current_block || user.block || '';
         // Ensure retake records are loaded even when the transcript is opened directly
         // without first visiting My Performance. Stored historical marks remain unchanged.
         const transcriptAdmission = user.admission_number || user.student_id || user.user_id;
@@ -2199,7 +2263,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="field"><span class="label">Program</span><span class="value">${escapeHtml(transcriptProgramName || 'N/A')}</span></div>
                 <div class="field"><span class="label">Academic Year</span><span class="value">${escapeHtml(academicYear)}</span></div>
                 <div class="field"><span class="label">Intake Year</span><span class="value">${escapeHtml(transcriptIntakeYear || 'N/A')}</span></div>
-                <div class="field"><span class="label">${isTVET ? 'Current Term' : 'Current Block'}</span><span class="value">${escapeHtml(transcriptCurrentBlock || 'N/A')}</span></div>
+                <div class="field"><span class="label">Current ${escapeHtml(PROGRAM.getBlockLabel(userProgram))}</span><span class="value">${escapeHtml(transcriptCurrentBlock || 'N/A')}</span></div>
             </div>
         </div>
 
@@ -3200,7 +3264,7 @@ const chartCanvas = printWindow.document.querySelector('.chart-container canvas'
         console.log('✅ Academic Reports with Hollow Star Indicator ready!');
         console.log('☆ Hollow Star: Subtle indicator for retaken units (My Performance only)');
         console.log('📊 NO DEMO DATA - Only real data from database');
-        console.log('📊 Academic Year Mapping: KRCHN (3 yrs) | TVET Cert (1 yr) | TVET Diploma (2 yrs)');
+        console.log('📊 Academic periods: programme-configured semesters, terms or blocks');
         console.log('📊 "Proceed to next block" message on transcript');
     }
 
@@ -3222,6 +3286,7 @@ const chartCanvas = printWindow.document.querySelector('.chart-container canvas'
     window.calculatePoints = calculatePoints;
     window.calculateGPA = calculateGPA;
     window.PROGRAM = PROGRAM;
+    window.loadStudentAcademicStructure = loadStudentAcademicStructure;
     window.renderMyMarksCharts = renderMyMarksCharts;
     window.fetchStudentRetakeData = fetchStudentRetakeData;
     window.hasRetake = hasRetake;
