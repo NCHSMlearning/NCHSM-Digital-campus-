@@ -1368,69 +1368,27 @@
                 <div class="admin-badge">Administrator</div>
             </div>
             
-            <ul class="nav" id="mainNav">
-                <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <div class="admin-nav-search"><i class="fas fa-search" aria-hidden="true"></i><input id="adminNavSearch" type="search" placeholder="Search menu..." aria-label="Search navigation"></div>
+<ul class="nav" id="mainNav">
+<li class="nav-section-label">OVERVIEW</li>
+<li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-gauge-high"></i><span>Dashboard</span></a></li>
+<li class="nav-section-label">STUDENT MANAGEMENT</li>
+<li class="nav-dropdown"><a href="#" class="dropdown-toggle" aria-expanded="false"><i class="fas fa-user-graduate"></i><span>Students</span><i class="fas fa-chevron-down nav-chevron"></i></a><ul class="dropdown-menu">
+<li><a href="#" data-tab="enroll"><i class="fas fa-users"></i><span>Manage Students</span></a></li><li><a href="#" data-tab="pending"><i class="fas fa-user-check"></i><span>Admission Approvals</span></a></li><li><a href="#" data-tab="student-progression"><i class="fas fa-arrow-trend-up"></i><span>Student Progression</span></a></li></ul></li>
+<li class="nav-dropdown"><a href="#" class="dropdown-toggle" aria-expanded="false"><i class="fas fa-user-shield"></i><span>Accounts & Access</span><i class="fas fa-chevron-down nav-chevron"></i></a><ul class="dropdown-menu"><li><a href="#" data-tab="users"><i class="fas fa-users-cog"></i><span>Manage Users</span></a></li><li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i><span>Enroll Accounts</span></a></li></ul></li>
+<li class="nav-section-label">ACADEMIC MANAGEMENT</li>
 <li><a href="#" data-tab="institution-programs"><i class="fas fa-graduation-cap"></i><span>Programmes & Blocks</span></a></li>
-                
-                <!-- User Management Dropdown -->
-                <li class="nav-dropdown">
-                    <a href="#" class="dropdown-toggle">
-                        <i class="fas fa-users-cog"></i>
-                        <span>User Management</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
-                        <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals <span class="badge">5</span></a></li>
-                        <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
-                    </ul>
-                </li>
-                
-<li class="nav-dropdown"><a href="#" class="dropdown-toggle"><i class="fas fa-user-graduate"></i><span>Students</span><i class="fas fa-chevron-down"></i></a><ul class="dropdown-menu"><li><a href="#" data-tab="enroll">Manage Students</a></li><li><a href="#" data-tab="pending">Pending Approvals</a></li><li><a href="#" data-tab="student-progression">Student Progression</a></li></ul></li>
-<li class="nav-dropdown"><a href="#" class="dropdown-toggle"><i class="fas fa-chalkboard-teacher"></i><span>Lecturers</span><i class="fas fa-chevron-down"></i></a><ul class="dropdown-menu"><li><a href="#" data-tab="lecturer-directory">Lecturer Directory</a></li><li><a href="#" data-tab="lecturer-assignment">Unit Allocation</a></li><li><a href="#" data-tab="submission-progress">Submission Progress</a></li></ul></li>                <!-- Academic Dropdown -->
-                <li class="nav-dropdown">
-                    <a href="#" class="dropdown-toggle">
-                        <i class="fas fa-graduation-cap"></i>
-                        <span>Academic</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </a>
-                    <ul class="dropdown-menu"><li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-                        <li><a href="#" data-tab="lecturer-assignment"><i class="fas fa-user-tie"></i> HOD Unit Allocation <span class="badge-success">HOD</span></a></li>
-                        <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-                    </ul>
-                </li>
-                
-<li class="nav-dropdown"><a href="#" class="dropdown-toggle"><i class="fas fa-folder-open"></i><span>Teaching Documents</span><i class="fas fa-chevron-down"></i></a><ul class="dropdown-menu"><li><a href="#" data-tab="teaching-documents">Submitted Documents & Review</a></li></ul></li><li><a href="#" data-tab="research-supervision"><i class="fas fa-microscope"></i> Research Supervision</a></li>                <!-- Scheduling Dropdown -->
-                <li class="nav-dropdown">
-                    <a href="#" class="dropdown-toggle">
-                        <i class="fas fa-calendar-check"></i>
-                        <span>Scheduling</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
-                        <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-                        <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
-                    </ul>
-                </li>
-                
-                <!-- Communication Dropdown -->
-                <li class="nav-dropdown">
-                    <a href="#" class="dropdown-toggle">
-                        <i class="fas fa-headset"></i>
-                        <span>Communication</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets <span class="badge">3</span></a></li>
-                        <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
-                    </ul>
-                </li>
-                
-                <li><a href="#" data-tab="academic-reports"><i class="fas fa-chart-bar"></i> Reports & Analytics</a></li>
-                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-                <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
-            </ul>
+<li><a href="#" data-tab="unit-management"><i class="fas fa-book-open"></i><span>Unit Registration</span></a></li>
+<li class="nav-dropdown"><a href="#" class="dropdown-toggle" aria-expanded="false"><i class="fas fa-chalkboard-teacher"></i><span>Lecturers & Teaching</span><i class="fas fa-chevron-down nav-chevron"></i></a><ul class="dropdown-menu">
+<li><a href="#" data-tab="lecturer-directory"><i class="fas fa-address-book"></i><span>Lecturer Directory</span></a></li><li><a href="#" data-tab="lecturer-assignment"><i class="fas fa-people-arrows"></i><span>Unit Allocation</span></a></li><li><a href="#" data-tab="submission-progress"><i class="fas fa-list-check"></i><span>Submission Progress</span></a></li><li><a href="#" data-tab="teaching-documents"><i class="fas fa-folder-open"></i><span>Teaching Documents</span></a></li><li><a href="#" data-tab="research-supervision"><i class="fas fa-microscope"></i><span>Research Supervision</span></a></li></ul></li>
+<li class="nav-section-label">EXAMINATIONS & OPERATIONS</li>
+<li><a href="#" data-tab="cats"><i class="fas fa-file-circle-check"></i><span>CATS & Examinations</span></a></li>
+<li class="nav-dropdown"><a href="#" class="dropdown-toggle" aria-expanded="false"><i class="fas fa-calendar-days"></i><span>Timetable & Attendance</span><i class="fas fa-chevron-down nav-chevron"></i></a><ul class="dropdown-menu"><li><a href="#" data-tab="sessions"><i class="fas fa-calendar-plus"></i><span>Manage Sessions</span></a></li><li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i><span>Attendance</span></a></li><li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i><span>Academic Calendar</span></a></li></ul></li>
+<li class="nav-section-label">COMMUNICATION & INSIGHTS</li>
+<li class="nav-dropdown"><a href="#" class="dropdown-toggle" aria-expanded="false"><i class="fas fa-comments"></i><span>Communication</span><i class="fas fa-chevron-down nav-chevron"></i></a><ul class="dropdown-menu"><li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket"></i><span>Support Tickets</span></a></li><li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i><span>Inbox & Messages</span></a></li><li><a href="#" data-tab="resources"><i class="fas fa-folder-open"></i><span>Resources</span></a></li></ul></li>
+<li><a href="#" data-tab="academic-reports"><i class="fas fa-chart-column"></i><span>Reports & Analytics</span></a></li>
+<li class="nav-section-label">INSTITUTION</li><li><a href="#" data-tab="welcome-editor"><i class="fas fa-sliders"></i><span>Welcome Message</span></a></li>
+</ul>
             
             <div class="logout">
                 <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -2162,6 +2120,39 @@
 </style>
 
 <div id="hodDocumentReviewModal" style="display:none;position:fixed;inset:0;z-index:15000;background:rgba(15,23,42,.65);padding:16px;overflow:auto"><div style="max-width:980px;margin:3vh auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)"><div style="display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#102d4a;color:#fff"><strong id="hodDocumentModalTitle">Document review</strong><button type="button" onclick="closeHODDocumentReview()" style="background:transparent;color:#fff;border:0;font-size:24px">×</button></div><div style="padding:16px"><div id="hodDocumentPreview" style="height:55vh;min-height:320px;border:1px solid #e2e8f0;border-radius:10px;overflow:auto;background:#f8fafc"></div><label style="display:block;margin:14px 0 6px;font-weight:700">Review comments</label><textarea id="hodDocumentReviewComments" rows="3" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn-action" onclick="saveHODDocumentReview('approved')">Approve</button><button type="button" class="btn-action" onclick="saveHODDocumentReview('returned')">Return for correction</button><button type="button" class="btn-action" onclick="saveHODDocumentReview('rejected')">Reject</button></div></div></div></div>
+<style id="institution-admin-sidebar-redesign">
+:root{--admin-nav-bg:#101b31;--admin-nav-bg2:#172641;--admin-nav-text:#b9c6d8;--admin-nav-muted:#71829d;--admin-nav-accent:var(--institution-primary,#5b5bd6);--admin-nav-hover:rgba(255,255,255,.075)}
+#sidebar.sidebar{width:276px;background:linear-gradient(165deg,var(--admin-nav-bg),var(--admin-nav-bg2));border-right:1px solid rgba(255,255,255,.07);box-shadow:10px 0 32px rgba(15,23,42,.12);padding:0 12px;gap:0}
+#sidebar .sidebar-header{padding:23px 12px 18px;margin:0 -12px 12px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.08)}
+#sidebar .sidebar-header img{width:54px;height:54px;object-fit:contain;border-radius:15px}
+#sidebar .sidebar-header h2{font-size:1.05rem;letter-spacing:.01em}
+#sidebar .admin-badge{background:rgba(99,102,241,.18);border:1px solid rgba(165,180,252,.22);color:#c7d2fe;font-weight:700;letter-spacing:.07em}
+.admin-nav-search{height:42px;display:flex;align-items:center;gap:9px;margin:0 2px 12px;padding:0 12px;border-radius:11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);color:#91a2bc}
+.admin-nav-search input{min-width:0;width:100%;border:0;outline:0;background:transparent;color:#fff;font-size:13px}.admin-nav-search input::placeholder{color:#91a2bc}
+#sidebar .nav{padding:2px 0 22px;overflow-x:hidden;overscroll-behavior:contain}
+#sidebar .nav-section-label{padding:16px 13px 7px;color:var(--admin-nav-muted);font-size:9px;font-weight:800;letter-spacing:.14em;list-style:none}
+#sidebar .nav li{margin:2px 0;list-style:none}
+#sidebar .nav li a{min-height:42px;padding:9px 12px;margin:0 2px;gap:12px;border-radius:10px;color:var(--admin-nav-text);font-size:13px;font-weight:550;transition:background .18s ease,color .18s ease,transform .18s ease}
+#sidebar .nav li a>i:first-child{width:19px;min-width:19px;text-align:center;color:#8fa2c0;font-size:14px}
+#sidebar .nav li a:hover{background:var(--admin-nav-hover);color:#fff;transform:translateX(2px)}
+#sidebar .nav li a.active{background:linear-gradient(100deg,color-mix(in srgb,var(--admin-nav-accent) 88%,#fff 12%),var(--admin-nav-accent));color:#fff;box-shadow:0 6px 16px color-mix(in srgb,var(--admin-nav-accent) 25%,transparent)}
+#sidebar .nav li a.active>i:first-child{color:#fff}
+#sidebar .nav-dropdown>.dropdown-toggle{width:100%;cursor:pointer}
+#sidebar .nav-dropdown>.dropdown-toggle .nav-chevron{width:auto;margin-left:auto;font-size:10px;color:#7f91ad;transition:transform .2s ease}
+#sidebar .nav-dropdown.open>.dropdown-toggle{background:rgba(255,255,255,.075);color:#fff}
+#sidebar .nav-dropdown.open>.dropdown-toggle .nav-chevron{transform:rotate(180deg);color:#c7d2fe}
+#sidebar .nav-dropdown .dropdown-menu{display:none;padding:5px 0 7px 17px;margin:3px 0 5px 14px;border-left:1px solid rgba(148,163,184,.23)}
+#sidebar .nav-dropdown.open>.dropdown-menu{display:block}
+#sidebar .nav-dropdown .dropdown-menu li a{min-height:36px;padding:7px 10px!important;margin:1px 0!important;font-size:12px!important;color:#aebbd0!important;background:transparent!important;border-radius:8px!important;gap:10px!important}
+#sidebar .nav-dropdown .dropdown-menu li a>i:first-child{color:#7f93b2}
+#sidebar .nav-dropdown .dropdown-menu li a:hover{background:rgba(255,255,255,.075)!important;color:#fff!important}
+#sidebar .nav-dropdown .dropdown-menu li a.active{background:rgba(99,102,241,.22)!important;color:#fff!important;box-shadow:inset 2px 0 #a5b4fc!important}
+#sidebar .logout{margin:0 -12px;padding:12px 14px calc(14px + env(safe-area-inset-bottom));background:rgba(5,12,25,.18);border-top:1px solid rgba(255,255,255,.07)}
+#sidebar .logout a{min-height:42px;border-radius:10px;padding:10px 12px;font-size:13px}
+#sidebar .nav li.nav-search-hidden{display:none!important}
+@media(min-width:769px){#sidebar.sidebar{height:100vh;max-height:100vh;overflow:hidden}#sidebar .nav{flex:1;min-height:0}#sidebar .logout{flex-shrink:0}}
+@media(max-width:768px){#sidebar.sidebar{width:min(330px,88vw)!important;max-width:330px!important;padding:0 12px!important}#sidebar .nav{overflow-y:auto!important;max-height:none!important}#sidebar .nav-section-label{padding-top:13px}#sidebar .nav li a{min-height:46px}#sidebar .nav-dropdown .dropdown-menu li a{min-height:40px!important}}
+</style>
 </body>
 </html>
 
