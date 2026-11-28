@@ -315,7 +315,7 @@ function setupAdminNavSearch() {
     input.addEventListener('input',function(){
         const q=this.value.trim().toLowerCase();
         nav.querySelectorAll(':scope > li').forEach(item=>{
-            if(item.classList.contains('nav-section-label')){item.classList.add('nav-search-hidden');return;}
+            if(item.classList.contains('nav-section-label')){item.classList.toggle('nav-search-hidden',!!q);return;}
             const direct=item.querySelector(':scope > a');
             const links=Array.from(item.querySelectorAll('.dropdown-menu a[data-tab]'));
             const directMatch=direct&&direct.textContent.toLowerCase().includes(q);
