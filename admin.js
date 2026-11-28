@@ -266,6 +266,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
     setupMobileMenu();
     setupDropdowns();
+    setupAdminNavSearch();
     setupBlockTermDropdowns();
     setupAssignmentEventListeners();
     initCharts();
@@ -281,34 +282,53 @@ document.addEventListener('DOMContentLoaded', async function() {
 // SETUP DROPDOWNS (Matches Super Admin)
 // ------------------------------------------------------------------
 function setupDropdowns() {
-    const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
-    dropdownToggles.forEach(toggle => {
+    const toggles = document.querySelectorAll('#mainNav .nav-dropdown > .dropdown-toggle');
+    toggles.forEach(toggle => {
+        if (toggle.dataset.dropdownBound === 'true') return;
+        toggle.dataset.dropdownBound = 'true';
         toggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const parentLi = this.closest('.nav-dropdown');
-            
-            // Close all other dropdowns
-            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-                if (dropdown !== parentLi) {
-                    dropdown.classList.remove('open');
-                }
+            e.preventDefault(); e.stopPropagation();
+            const parent = this.closest('.nav-dropdown');
+            const shouldOpen = !parent.classList.contains('open');
+            document.querySelectorAll('#mainNav .nav-dropdown').forEach(item => {
+                item.classList.remove('open');
+                item.querySelector(':scope > .dropdown-toggle')?.setAttribute('aria-expanded','false');
             });
-            
-            parentLi.classList.toggle('open');
+            if (shouldOpen) { parent.classList.add('open'); this.setAttribute('aria-expanded','true'); }
         });
     });
-    
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.nav-dropdown')) {
-            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-                dropdown.classList.remove('open');
+    if (!document.body.dataset.adminDropdownOutsideBound) {
+        document.body.dataset.adminDropdownOutsideBound = 'true';
+        document.addEventListener('click', e => {
+            if (e.target.closest('#mainNav .nav-dropdown')) return;
+            document.querySelectorAll('#mainNav .nav-dropdown').forEach(item => {
+                item.classList.remove('open');
+                item.querySelector(':scope > .dropdown-toggle')?.setAttribute('aria-expanded','false');
             });
-        }
+        });
+    }
+}
+function setupAdminNavSearch() {
+    const input=document.getElementById('adminNavSearch'), nav=document.getElementById('mainNav');
+    if(!input||!nav||input.dataset.bound==='true') return;
+    input.dataset.bound='true';
+    input.addEventListener('input',function(){
+        const q=this.value.trim().toLowerCase();
+        nav.querySelectorAll(':scope > li').forEach(item=>{
+            if(item.classList.contains('nav-section-label')){item.classList.add('nav-search-hidden');return;}
+            const direct=item.querySelector(':scope > a');
+            const links=Array.from(item.querySelectorAll('.dropdown-menu a[data-tab]'));
+            const directMatch=direct&&direct.textContent.toLowerCase().includes(q);
+            const matches=links.filter(a=>a.textContent.toLowerCase().includes(q));
+            item.classList.toggle('nav-search-hidden',!!q&&!directMatch&&!matches.length);
+            if(item.classList.contains('nav-dropdown')){
+                item.classList.toggle('open',!!q&&matches.length>0);
+                item.querySelector(':scope > .dropdown-toggle')?.setAttribute('aria-expanded',q&&matches.length?'true':'false');
+                links.forEach(a=>a.closest('li').classList.toggle('nav-search-hidden',!!q&&!a.textContent.toLowerCase().includes(q)));
+            }
+        });
     });
 }
-
 // ------------------------------------------------------------------
 // SETUP ASSIGNMENT EVENT LISTENERS
 // ------------------------------------------------------------------
@@ -515,6 +535,11 @@ function setupNavigation() {
                 navLinks[j].classList.remove('active');
             }
             this.classList.add('active');
+            document.querySelectorAll('#mainNav .nav-dropdown').forEach(function(group) {
+                var selected = group.contains(this);
+                group.classList.toggle('open', selected);
+                group.querySelector(':scope > .dropdown-toggle')?.setAttribute('aria-expanded', selected ? 'true' : 'false');
+            }, this);
             
             for (var k = 0; k < allTabs.length; k++) {
                 allTabs[k].style.display = 'none';
